@@ -19,13 +19,12 @@ SECRET_KEY = os.environ.get(
     "SECRET_KEY", "django-insecure-chatapp-secret-key-change-in-production-2024"
 )
 
-DEBUG = False
+# Replace DEBUG line with:
+DEBUG = os.environ.get("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = [
-    "encryptedchatapp-webbased-production.up.railway.app",
-    "localhost",
-    "127.0.0.1",
-]
+
+# Update ALLOWED_HOSTS:
+ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -79,16 +78,15 @@ CHANNEL_LAYERS = {
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": os.environ.get("MYSQLDATABASE", "chatapp_db"),
+        "NAME": os.environ.get("MYSQLDB", "railway"),
         "USER": os.environ.get("MYSQLUSER", "root"),
         "PASSWORD": os.environ.get("MYSQLPASSWORD", "root"),
-        "HOST": os.environ.get("MYSQLHOST", "127.0.0.1"),
+        "HOST": os.environ.get("MYSQLHOST", "localhost"),
         "PORT": os.environ.get("MYSQLPORT", "3306"),
-        "OPTIONS": {
-            "charset": "utf8mb4",
-        },
     }
 }
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {
