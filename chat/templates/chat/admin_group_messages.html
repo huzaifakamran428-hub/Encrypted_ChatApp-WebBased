@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block title %}Group Messages — Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+.admin-wrap { max-width: 1200px; margin: 0 auto; padding: 28px 16px 60px; }
+.admin-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+.admin-header h1 { font-size: 1.5rem; font-weight: 800; flex: 1; }
+.back-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 0.82rem; color: var(--text-secondary); text-decoration: none; }
+.back-btn:hover { border-color: var(--accent); color: var(--accent); }
+.stats-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.stat-pill { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; display: flex; flex-direction: column; gap: 2px; min-width: 110px; }
+.stat-pill .n { font-size: 1.4rem; font-weight: 800; }
+.stat-pill .l { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.filter-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+.filter-row input, .filter-row select {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 14px; color: var(--text-primary);
+  font-size: 0.88rem; outline: none;
+}
+.filter-row input { flex: 1; min-width: 160px; }
+.filter-row select { min-width: 150px; }
+.filter-row input:focus, .filter-row select:focus { border-color: var(--accent); }
+.filter-row button { background: var(--accent); border: none; border-radius: 8px; padding: 10px 18px; color: #fff; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.tbl th { padding: 10px 14px; text-align: left; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); border-bottom: 1px solid var(--border); background: var(--bg-input,#1a1f2e); }
+.tbl td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: rgba(124,106,247,0.04); }
+.msg-content { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+.badge { display: inline-block; font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+.badge-blue  { background: rgba(0,180,216,0.12); color: #00b4d8; border: 1px solid rgba(0,180,216,0.25); }
+.badge-gray  { background: rgba(120,120,120,0.12); color: var(--text-muted); border: 1px solid rgba(120,120,120,0.2); }
+.group-tag { display: inline-block; background: rgba(124,106,247,0.12); color: var(--accent); border-radius: 20px; padding: 2px 10px; font-size: 0.75rem; font-weight: 600; }
+.empty-state { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+.empty-state i { font-size: 2rem; margin-bottom: 12px; display: block; }
+@media (max-width: 680px) {
+  .tbl thead { display: none; }
+  .tbl, .tbl tbody, .tbl tr, .tbl td { display: block; }
+  .tbl tr { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .tbl td { padding: 3px 0; border: none; font-size: 0.82rem; }
+  .tbl td::before { content: attr(data-label) ': '; font-weight: 700; color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; }
+  .msg-content { max-width: 100%; white-space: normal; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-wrap">
+  <div class="admin-header">
+    <a href="{% url 'chat:admin_dashboard' %}" class="back-btn"><i class="fas fa-arrow-left"></i> Dashboard</a>
+    <h1><i class="fas fa-message" style="color:var(--warning);margin-right:8px;"></i>Group Messages</h1>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-pill"><span class="n">{{ total }}</span><span class="l">Total</span></div>
+  </div>
+
+  <form class="filter-row" method="get">
+    <input type="text" name="q" value="{{ query }}" placeholder="Search by sender or group name…">
+    <select name="group">
+      <option value="">All Groups</option>
+      {% for g in groups %}
+        <option value="{{ g.id }}" {% if sel_group == g.id|stringformat:'s' %}selected{% endif %}>{{ g.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit"><i class="fas fa-search"></i> Filter</button>
+  </form>
+
+  <div class="card">
+    {% if messages %}
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Group</th>
+          <th>Sender</th>
+          <th>Message</th>
+          <th>Type</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for msg in messages %}
+        <tr>
+          <td data-label="ID" style="color:var(--text-muted);font-size:0.75rem;">{{ msg.id }}</td>
+          <td data-label="Group"><span class="group-tag">{{ msg.group }}</span></td>
+          <td data-label="Sender"><strong>{{ msg.sender }}</strong></td>
+          <td data-label="Message"><div class="msg-content">{{ msg.content }}</div></td>
+          <td data-label="Type">
+            {% if msg.file_type %}
+              <span class="badge badge-blue">{{ msg.file_type }}</span>
+            {% else %}
+              <span class="badge badge-gray">text</span>
+            {% endif %}
+          </td>
+          <td data-label="Time" style="color:var(--text-muted);font-size:0.78rem;white-space:nowrap;">{{ msg.timestamp }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <i class="fas fa-comments"></i>
+      {% if query or sel_group %}No messages found for this filter{% else %}No group messages yet{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

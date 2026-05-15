@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+{% block title %}Verify Email — ChatApp{% endblock %}
+
+{% block extra_css %}
+<style>
+.auth-wrapper {
+  min-height: calc(100vh - 60px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+}
+.auth-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 40px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: var(--shadow);
+}
+.auth-header { text-align: center; margin-bottom: 28px; }
+.auth-icon {
+  width: 64px; height: 64px;
+  background: var(--accent-light);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 16px;
+  font-size: 1.5rem; color: var(--accent);
+}
+.auth-header h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 6px; }
+.auth-header p  { color: var(--text-secondary); font-size: 0.88rem; }
+.email-badge {
+  display: inline-block;
+  background: var(--accent-light);
+  color: var(--accent);
+  border-radius: 20px;
+  padding: 2px 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  word-break: break-all;
+}
+/* OTP boxes */
+.otp-row {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  margin: 28px 0 20px;
+}
+.otp-box {
+  width: 64px; height: 64px;
+  font-size: 1.8rem; font-weight: 800;
+  text-align: center;
+  background: var(--bg-input, #1e2435);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  caret-color: var(--accent);
+}
+.otp-box:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(124,106,247,0.18);
+}
+.otp-box.filled { border-color: var(--success, #3ecf8e); }
+.btn-verify {
+  width: 100%;
+  padding: 13px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  letter-spacing: 0.03em;
+}
+.btn-verify:hover { opacity: 0.9; }
+.btn-verify:disabled { opacity: 0.6; cursor: not-allowed; }
+.resend-row {
+  text-align: center;
+  margin-top: 18px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.resend-row button {
+  background: none; border: none;
+  color: var(--accent); cursor: pointer;
+  font-size: 0.85rem; font-weight: 600;
+  padding: 0; text-decoration: underline;
+}
+.resend-row button:disabled { color: var(--text-muted); cursor: not-allowed; text-decoration: none; }
+.countdown { font-weight: 600; color: var(--warning, #f5a623); }
+.back-link {
+  display: block; text-align: center;
+  margin-top: 16px;
+  font-size: 0.82rem; color: var(--text-muted);
+  text-decoration: none;
+}
+.back-link:hover { color: var(--accent); }
+.resend-msg {
+  margin-top: 10px;
+  font-size: 0.82rem;
+  text-align: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  display: none;
+}
+.resend-msg.success { background: rgba(62,207,142,0.1); color: var(--success, #3ecf8e); display: block; }
+.resend-msg.error   { background: rgba(246,109,109,0.1); color: var(--danger, #f66d6d); display: block; }
+
+@media (max-width: 480px) {
+  .auth-card { padding: 28px 16px; }
+  .otp-box { width: 52px; height: 52px; font-size: 1.5rem; border-radius: 10px; }
+  .otp-row { gap: 10px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="auth-icon"><i class="fas fa-envelope-open-text"></i></div>
+      <h1>Verify Your Email</h1>
+      <p>We sent a 4-digit code to<br>
+        <span class="email-badge">{{ email }}</span>
+      </p>
+    </div>
+
+    {% if messages %}
+      {% for msg in messages %}
+        <div class="alert alert-{{ msg.tags }}" style="margin-bottom:16px;padding:10px 14px;border-radius:8px;
+          font-size:0.85rem;background:{% if 'error' in msg.tags %}rgba(246,109,109,0.12){% elif 'warning' in msg.tags %}rgba(245,166,35,0.12){% else %}rgba(62,207,142,0.12){% endif %};
+          color:{% if 'error' in msg.tags %}var(--danger,#f66d6d){% elif 'warning' in msg.tags %}var(--warning,#f5a623){% else %}var(--success,#3ecf8e){% endif %};
+          border:1px solid {% if 'error' in msg.tags %}rgba(246,109,109,0.3){% elif 'warning' in msg.tags %}rgba(245,166,35,0.3){% else %}rgba(62,207,142,0.3){% endif %};">
+          {{ msg }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="post" id="otpForm">
+      {% csrf_token %}
+      <div class="otp-row">
+        <input type="text" class="otp-box" name="otp1" id="otp1" maxlength="1" inputmode="numeric" autocomplete="off" autofocus>
+        <input type="text" class="otp-box" name="otp2" id="otp2" maxlength="1" inputmode="numeric" autocomplete="off">
+        <input type="text" class="otp-box" name="otp3" id="otp3" maxlength="1" inputmode="numeric" autocomplete="off">
+        <input type="text" class="otp-box" name="otp4" id="otp4" maxlength="1" inputmode="numeric" autocomplete="off">
+      </div>
+      <button type="submit" class="btn-verify" id="verifyBtn">
+        <i class="fas fa-shield-check" style="margin-right:7px;"></i>Verify & Create Account
+      </button>
+    </form>
+
+    <div class="resend-row">
+      Didn't receive the code?
+      <button id="resendBtn" disabled>Resend in <span class="countdown" id="countdown">60</span>s</button>
+    </div>
+    <div class="resend-msg" id="resendMsg"></div>
+    <a href="{% url 'users:register' %}" class="back-link">← Back to Registration</a>
+  </div>
+</div>
+
+<script>
+// Auto-advance OTP boxes
+const boxes = document.querySelectorAll('.otp-box');
+boxes.forEach((box, i) => {
+  box.addEventListener('input', (e) => {
+    const val = e.target.value.replace(/\D/g,'');
+    e.target.value = val.slice(-1);
+    if (val && i < boxes.length - 1) boxes[i+1].focus();
+    box.classList.toggle('filled', !!e.target.value);
+    checkComplete();
+  });
+  box.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace' && !box.value && i > 0) {
+      boxes[i-1].focus();
+      boxes[i-1].value = '';
+      boxes[i-1].classList.remove('filled');
+    }
+    // Allow paste on first box
+    if (e.key === 'v' && (e.ctrlKey || e.metaKey)) return;
+  });
+  box.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'').slice(0,4);
+    [...pasted].forEach((ch, idx) => {
+      if (boxes[idx]) { boxes[idx].value = ch; boxes[idx].classList.add('filled'); }
+    });
+    const next = Math.min(pasted.length, boxes.length-1);
+    boxes[next].focus();
+    checkComplete();
+  });
+});
+
+function checkComplete() {
+  const allFilled = [...boxes].every(b => b.value.length === 1);
+  document.getElementById('verifyBtn').disabled = !allFilled;
+}
+checkComplete();
+
+// Countdown + resend
+let secs = 60;
+const resendBtn = document.getElementById('resendBtn');
+const countEl   = document.getElementById('countdown');
+const resendMsg = document.getElementById('resendMsg');
+const timer = setInterval(() => {
+  secs--;
+  countEl.textContent = secs;
+  if (secs <= 0) {
+    clearInterval(timer);
+    resendBtn.innerHTML = 'Resend code';
+    resendBtn.disabled = false;
+  }
+}, 1000);
+
+resendBtn.addEventListener('click', async () => {
+  resendBtn.disabled = true;
+  resendBtn.textContent = 'Sending…';
+  resendMsg.className = 'resend-msg';
+  try {
+    const resp = await fetch('{% url "users:resend_otp" %}', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' }
+    });
+    const data = await resp.json();
+    resendMsg.textContent = data.message || 'New code sent!';
+    resendMsg.className = 'resend-msg success';
+  } catch {
+    resendMsg.textContent = 'Failed to resend. Try again.';
+    resendMsg.className = 'resend-msg error';
+    resendBtn.disabled = false;
+    resendBtn.textContent = 'Resend code';
+  }
+  // Reset countdown
+  secs = 60;
+  resendBtn.disabled = true;
+  const t2 = setInterval(() => {
+    secs--;
+    resendBtn.innerHTML = `Resend in <span class="countdown">${secs}</span>s`;
+    if (secs <= 0) { clearInterval(t2); resendBtn.innerHTML = 'Resend code'; resendBtn.disabled = false; }
+  }, 1000);
+});
+</script>
+{% endblock %}

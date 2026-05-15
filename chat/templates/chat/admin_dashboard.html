@@ -1,0 +1,318 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard — ChatApp{% endblock %}
+
+{% block extra_css %}
+<style>
+.admin-wrap { max-width: 1200px; margin: 0 auto; padding: 28px 20px 60px; }
+
+/* ── Page title ── */
+.admin-title { font-size: 1.6rem; font-weight: 800; margin-bottom: 4px; }
+.admin-sub   { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 28px; }
+.enc-badge   { display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+               background: rgba(62,207,142,0.12); color: var(--success);
+               border: 1px solid var(--success); border-radius: 20px; padding: 3px 12px; }
+
+/* ── Stat cards ── */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.stat-card  { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+              padding: 18px 16px; display: flex; align-items: center; gap: 14px; }
+.stat-icon  { width: 44px; height: 44px; border-radius: var(--radius-sm); display: flex;
+              align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+.stat-icon.purple { background: rgba(124,106,247,0.15); color: var(--accent); }
+.stat-icon.teal   { background: rgba(62,207,142,0.15);  color: var(--success); }
+.stat-icon.orange { background: rgba(245,166,35,0.15);  color: var(--warning); }
+.stat-icon.red    { background: rgba(246,109,109,0.15); color: var(--danger); }
+.stat-icon.blue   { background: rgba(0,180,216,0.15);   color: #00b4d8; }
+.stat-icon.pink   { background: rgba(246,109,109,0.10); color: #f06292; }
+.stat-val   { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+.stat-lbl   { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Encryption spec bar ── */
+.enc-bar { background: rgba(62,207,142,0.06); border: 1px solid rgba(62,207,142,0.25);
+           border-radius: var(--radius); padding: 14px 20px; margin-bottom: 24px;
+           display: flex; flex-wrap: wrap; gap: 24px; }
+.enc-item { }
+.enc-item .key  { font-size: 0.68rem; font-weight: 700; color: var(--success); text-transform: uppercase; letter-spacing: .05em; }
+.enc-item .val  { font-size: 0.88rem; font-family: monospace; color: var(--text-primary); margin-top: 2px; }
+
+/* ── Main grid ── */
+.main-grid { display: grid; grid-template-columns: 1fr 260px; gap: 18px; align-items: start; }
+@media (max-width: 800px) { .main-grid { grid-template-columns: 1fr; } }
+
+/* ── Table card ── */
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.card-head { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.card-head h3 { font-size: 0.92rem; font-weight: 700; }
+.card-head a  { font-size: 0.78rem; color: var(--accent); text-decoration: none; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.tbl th { padding: 10px 14px; text-align: left; font-size: 0.7rem; font-weight: 700;
+          text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted);
+          border-bottom: 1px solid var(--border); }
+.tbl td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: rgba(255,255,255,0.02); }
+.user-link { color: var(--accent); text-decoration: none; font-weight: 600; }
+.user-link:hover { text-decoration: underline; }
+.enc-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+            border-radius: 20px; font-size: 0.7rem; font-weight: 600; }
+.enc-pill.yes { background: rgba(62,207,142,0.15); color: var(--success); }
+.enc-pill.no  { background: rgba(245,166,35,0.15);  color: var(--warning); }
+.msg-preview { max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-secondary); }
+
+/* ── Quick actions sidebar ── */
+.qa-title { font-size: 0.82rem; font-weight: 700; padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
+.qa-title i { color: var(--warning); }
+.qa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); }
+.qa-btn { background: var(--bg-card); padding: 16px 12px; text-align: center; text-decoration: none;
+          transition: background 0.15s; cursor: pointer; border: none; width: 100%; }
+.qa-btn:hover { background: var(--bg-secondary); }
+.qa-btn i { display: block; font-size: 1.2rem; margin-bottom: 6px; }
+.qa-btn .qa-lbl { font-size: 0.72rem; color: var(--text-primary); font-weight: 600; }
+.qa-btn .qa-sub { font-size: 0.65rem; color: var(--text-muted); margin-top: 1px; }
+
+/* ── Users card ── */
+.users-card { margin-top: 18px; }
+.badge-active   { display: inline-block; padding: 1px 8px; border-radius: 20px; font-size: 0.68rem; font-weight: 700; background: rgba(62,207,142,0.15); color: var(--success); }
+.badge-inactive { display: inline-block; padding: 1px 8px; border-radius: 20px; font-size: 0.68rem; font-weight: 700; background: rgba(246,109,109,0.12); color: var(--danger); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-wrap">
+
+  <!-- Header -->
+  <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:20px;">
+    <div>
+      <div class="admin-title">💬 ChatApp Admin</div>
+      <div class="admin-sub">Super Admin Dashboard — Full System Control</div>
+    </div>
+    <span class="enc-badge"><i class="fas fa-lock"></i> AES-256 Encrypted System</span>
+  </div>
+
+  <!-- Stat Cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon purple"><i class="fas fa-users"></i></div>
+      <div><div class="stat-val" style="color:var(--accent);">{{ total_users }}</div><div class="stat-lbl">Total Users</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon teal"><i class="fas fa-comment-dots"></i></div>
+      <div><div class="stat-val" style="color:var(--success);">{{ total_messages }}</div><div class="stat-lbl">Total Messages</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon teal"><i class="fas fa-lock"></i></div>
+      <div><div class="stat-val" style="color:var(--success);">{{ encrypted_msgs }}</div><div class="stat-lbl">Encrypted Messages</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon purple"><i class="fas fa-users-rectangle"></i></div>
+      <div><div class="stat-val" style="color:var(--accent);">{{ group_chats }}</div><div class="stat-lbl">Group Chats</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon blue"><i class="fas fa-bell"></i></div>
+      <div><div class="stat-val" style="color:#f5a623;">{{ unread_messages }}</div><div class="stat-lbl">Unread Messages</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon red"><i class="fas fa-paperclip"></i></div>
+      <div><div class="stat-val" style="color:var(--danger);">{{ files_shared }}</div><div class="stat-lbl">Files Shared</div></div>
+    </div>
+  </div>
+
+  <!-- Encryption spec bar -->
+  <div class="enc-bar">
+    <div class="enc-item"><div class="key">Algorithm</div><div class="val">AES-256-CBC</div></div>
+    <div class="enc-item"><div class="key">Key Size</div><div class="val">256 bits (32 bytes)</div></div>
+    <div class="enc-item"><div class="key">Block Size</div><div class="val">128 bits (16 bytes)</div></div>
+    <div class="enc-item"><div class="key">IV Per Message</div><div class="val">128 bits (unique)</div></div>
+    <div class="enc-item"><div class="key">Padding</div><div class="val">PKCS7</div></div>
+    <div class="enc-item"><div class="key">Encryption Rate</div>
+      <div class="val">{% if total_messages %}{{ encrypted_msgs|floatformat:0 }}/{{ total_messages }} ({% widthratio encrypted_msgs total_messages 100 %}%){% else %}N/A{% endif %}</div>
+    </div>
+  </div>
+
+  <!-- Main grid: messages table + quick actions -->
+  <div class="main-grid">
+
+    <!-- Recent Messages -->
+    <div class="card">
+      <div class="card-head">
+        <h3>💬 Recent Messages (Decrypted)</h3>
+        <a href="{% url 'chat:home' %}">View all →</a>
+      </div>
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>From</th><th>To</th><th>Message</th><th>Enc</th><th>Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for msg in recent_messages %}
+          <tr>
+            <td><a href="{% url 'chat:room' msg.sender %}" class="user-link">{{ msg.sender }}</a></td>
+            <td><a href="{% url 'chat:room' msg.receiver %}" class="user-link">{{ msg.receiver }}</a></td>
+            <td><div class="msg-preview">{{ msg.content }}</div></td>
+            <td>
+              {% if msg.encrypted %}
+                <span class="enc-pill yes"><i class="fas fa-lock" style="font-size:0.65rem;"></i></span>
+              {% else %}
+                <span class="enc-pill no"><i class="fas fa-triangle-exclamation" style="font-size:0.65rem;"></i></span>
+              {% endif %}
+            </td>
+            <td style="color:var(--text-muted); white-space:nowrap;">{{ msg.timestamp }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:28px;">No messages yet</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Quick Actions sidebar -->
+    <div>
+      <div class="card">
+        <div class="qa-title"><i class="fas fa-bolt"></i> Quick Actions</div>
+        <div class="qa-grid">
+          <a href="{% url 'chat:admin_users' %}" class="qa-btn">
+            <i class="fas fa-users" style="color:var(--accent);"></i>
+            <div class="qa-lbl">Manage Users</div>
+            <div class="qa-sub">{{ total_users }} users</div>
+          </a>
+          <a href="{% url 'chat:admin_messages' %}" class="qa-btn">
+            <i class="fas fa-comment-dots" style="color:var(--success);"></i>
+            <div class="qa-lbl">All Messages</div>
+            <div class="qa-sub">{{ total_messages }} total</div>
+          </a>
+          <a href="{% url 'chat:admin_groups' %}" class="qa-btn">
+            <i class="fas fa-users-rectangle" style="color:var(--accent);"></i>
+            <div class="qa-lbl">Group Chats</div>
+            <div class="qa-sub">{{ group_chats }} groups</div>
+          </a>
+          <a href="{% url 'chat:admin_group_messages' %}" class="qa-btn">
+            <i class="fas fa-message" style="color:var(--warning);"></i>
+            <div class="qa-lbl">Group Messages</div>
+            <div class="qa-sub">{{ total_messages }} total</div>
+          </a>
+          <a href="{% url 'chat:admin_search' %}" class="qa-btn">
+            <i class="fas fa-magnifying-glass" style="color:#00b4d8;"></i>
+            <div class="qa-lbl">Search Users</div>
+            <div class="qa-sub">Find accounts</div>
+          </a>
+          <a href="/admin/" class="qa-btn">
+            <i class="fas fa-screwdriver-wrench" style="color:var(--danger);"></i>
+            <div class="qa-lbl">Django Admin</div>
+            <div class="qa-sub">Full control</div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Users Table -->
+  <div class="card users-card">
+    <div class="card-head">
+      <h3>👥 Manage Users</h3>
+      <button onclick="document.getElementById('add-user-modal').style.display='flex'" style="background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:6px 14px;font-size:0.78rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;"><i class="fas fa-user-plus"></i> Add User</button>
+    </div>
+    <table class="tbl">
+      <thead>
+        <tr><th>Username</th><th>Email</th><th>Status</th><th>Joined</th><th style="text-align:right;">Actions</th></tr>
+      </thead>
+      <tbody id="users-tbody">
+        {% for u in all_users %}
+        <tr id="user-row-{{ u.username }}">
+          <td><a href="{% url 'chat:room' u.username %}" class="user-link">{{ u.username }}</a></td>
+          <td style="color:var(--text-secondary);">{{ u.email|default:'—' }}</td>
+          <td>
+            <span id="status-badge-{{ u.username }}" class="{% if u.is_active %}badge-active{% else %}badge-inactive{% endif %}">{% if u.is_active %}Active{% else %}Inactive{% endif %}</span>
+          </td>
+          <td style="color:var(--text-muted); font-size:0.78rem;">{{ u.date_joined|date:"M d, Y" }}</td>
+          <td style="text-align:right;">
+            <button onclick="toggleUser('{{ u.username }}')" id="toggle-btn-{{ u.username }}" title="Activate / Deactivate" style="background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 10px;font-size:0.72rem;cursor:pointer;color:var(--text-secondary);margin-right:4px;">
+              {% if u.is_active %}<i class="fas fa-ban"></i> Deactivate{% else %}<i class="fas fa-check-circle"></i> Activate{% endif %}
+            </button>
+            <button onclick="deleteUser('{{ u.username }}')" title="Delete user" style="background:none;border:1px solid rgba(246,109,109,0.3);border-radius:var(--radius-sm);padding:4px 10px;font-size:0.72rem;cursor:pointer;color:var(--danger);"><i class="fas fa-trash-alt"></i></button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px;">No users found</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- Add User Modal -->
+<div id="add-user-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:32px;width:100%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+    <h3 style="margin-bottom:20px;font-size:1rem;font-weight:700;">Add New User</h3>
+    <div id="add-user-error" style="display:none;padding:8px 12px;background:rgba(246,109,109,0.1);color:var(--danger);border-radius:8px;font-size:0.82rem;margin-bottom:12px;"></div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <input id="new-username" type="text" placeholder="Username" style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);padding:10px 14px;font-size:0.88rem;outline:none;">
+      <input id="new-email" type="email" placeholder="Email (optional)" style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);padding:10px 14px;font-size:0.88rem;outline:none;">
+      <input id="new-password" type="password" placeholder="Password" style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);padding:10px 14px;font-size:0.88rem;outline:none;">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;">
+      <button onclick="addUser()" style="flex:1;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:10px;font-weight:700;cursor:pointer;">Create User</button>
+      <button onclick="document.getElementById('add-user-modal').style.display='none'" style="flex:1;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;cursor:pointer;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+const CSRF = "{{ csrf_token }}";
+
+async function toggleUser(username) {
+  const r = await fetch(`/chat/admin-panel/users/${username}/toggle/`, {method:'POST', headers:{'X-CSRFToken':CSRF}});
+  const d = await r.json();
+  if (d.ok) {
+    const badge = document.getElementById(`status-badge-${username}`);
+    const btn = document.getElementById(`toggle-btn-${username}`);
+    if (d.is_active) {
+      badge.className = 'badge-active'; badge.textContent = 'Active';
+      btn.innerHTML = '<i class="fas fa-ban"></i> Deactivate';
+    } else {
+      badge.className = 'badge-inactive'; badge.textContent = 'Inactive';
+      btn.innerHTML = '<i class="fas fa-check-circle"></i> Activate';
+    }
+  } else alert(d.error || 'Failed');
+}
+
+async function deleteUser(username) {
+  if (!confirm(`Permanently delete user "${username}" and all their data? This cannot be undone.`)) return;
+  const r = await fetch(`/chat/admin-panel/users/${username}/delete/`, {method:'POST', headers:{'X-CSRFToken':CSRF}});
+  const d = await r.json();
+  if (d.ok) { document.getElementById(`user-row-${username}`).remove(); }
+  else alert(d.error || 'Failed');
+}
+
+async function addUser() {
+  const username = document.getElementById('new-username').value.trim();
+  const email    = document.getElementById('new-email').value.trim();
+  const password = document.getElementById('new-password').value.trim();
+  const errEl    = document.getElementById('add-user-error');
+  errEl.style.display = 'none';
+  if (!username || !password) { errEl.textContent='Username and password are required.'; errEl.style.display='block'; return; }
+  const r = await fetch('/chat/admin-panel/users/add/', {method:'POST', headers:{'X-CSRFToken':CSRF,'Content-Type':'application/json'}, body:JSON.stringify({username,email,password})});
+  const d = await r.json();
+  if (d.ok) {
+    document.getElementById('add-user-modal').style.display='none';
+    document.getElementById('new-username').value=''; document.getElementById('new-email').value=''; document.getElementById('new-password').value='';
+    // Add row to table
+    const tbody = document.getElementById('users-tbody');
+    const tr = document.createElement('tr'); tr.id = `user-row-${d.username}`;
+    tr.innerHTML = `<td><a href="/chat/room/${d.username}/" class="user-link">${d.username}</a></td>
+      <td style="color:var(--text-secondary);">${d.email||'—'}</td>
+      <td><span id="status-badge-${d.username}" class="badge-active">Active</span></td>
+      <td style="color:var(--text-muted);font-size:0.78rem;">${d.date_joined||'Just now'}</td>
+      <td style="text-align:right;">
+        <button onclick="toggleUser('${d.username}')" id="toggle-btn-${d.username}" style="background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 10px;font-size:0.72rem;cursor:pointer;color:var(--text-secondary);margin-right:4px;"><i class="fas fa-ban"></i> Deactivate</button>
+        <button onclick="deleteUser('${d.username}')" style="background:none;border:1px solid rgba(246,109,109,0.3);border-radius:var(--radius-sm);padding:4px 10px;font-size:0.72rem;cursor:pointer;color:var(--danger);"><i class="fas fa-trash-alt"></i></button>
+      </td>`;
+    tbody.insertBefore(tr, tbody.firstChild);
+  } else { errEl.textContent = d.error || 'Failed to create user.'; errEl.style.display='block'; }
+}
+</script>
+{% endblock extra_js %}

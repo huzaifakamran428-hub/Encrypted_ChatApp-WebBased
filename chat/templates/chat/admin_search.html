@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% block title %}Search Users — Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+.admin-wrap { max-width: 1000px; margin: 0 auto; padding: 28px 16px 60px; }
+.admin-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+.admin-header h1 { font-size: 1.5rem; font-weight: 800; flex: 1; }
+.back-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 0.82rem; color: var(--text-secondary); text-decoration: none; }
+.back-btn:hover { border-color: var(--accent); color: var(--accent); }
+.search-big {
+  display: flex; gap: 10px; margin-bottom: 24px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 6px 8px 6px 16px;
+  align-items: center;
+}
+.search-big i { color: var(--text-muted); font-size: 1rem; }
+.search-big input {
+  flex: 1; background: none; border: none; outline: none;
+  color: var(--text-primary); font-size: 1rem; padding: 8px 0;
+}
+.search-big button {
+  background: var(--accent); border: none; border-radius: 8px;
+  padding: 10px 20px; color: #fff; font-size: 0.88rem;
+  font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+.result-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px 20px; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  transition: border-color 0.15s;
+}
+.result-card:hover { border-color: var(--accent); }
+.user-av {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--accent-light,rgba(124,106,247,0.15));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; font-weight: 800; color: var(--accent);
+  flex-shrink: 0;
+}
+.user-info { flex: 1; min-width: 140px; }
+.user-info .uname { font-size: 1rem; font-weight: 700; }
+.user-info .uemail { font-size: 0.8rem; color: var(--text-muted); }
+.user-stats { display: flex; gap: 14px; flex-wrap: wrap; }
+.user-stat { text-align: center; }
+.user-stat .val { font-size: 1.1rem; font-weight: 700; }
+.user-stat .lbl { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; }
+.badge { display: inline-block; font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-right: 4px; }
+.badge-green { background: rgba(62,207,142,0.12); color: var(--success,#3ecf8e); border: 1px solid rgba(62,207,142,0.25); }
+.badge-blue  { background: rgba(0,180,216,0.12); color: #00b4d8; border: 1px solid rgba(0,180,216,0.25); }
+.badge-gray  { background: rgba(120,120,120,0.12); color: var(--text-muted); border: 1px solid rgba(120,120,120,0.2); }
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+.empty-state i { font-size: 2.5rem; margin-bottom: 12px; display: block; }
+.hint-text { color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 24px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-wrap">
+  <div class="admin-header">
+    <a href="{% url 'chat:admin_dashboard' %}" class="back-btn"><i class="fas fa-arrow-left"></i> Dashboard</a>
+    <h1><i class="fas fa-magnifying-glass" style="color:#00b4d8;margin-right:8px;"></i>Search Users</h1>
+  </div>
+
+  <form class="search-big" method="get">
+    <i class="fas fa-search"></i>
+    <input type="text" name="q" value="{{ query }}" placeholder="Search by username or email address…" autofocus>
+    <button type="submit">Search</button>
+  </form>
+
+  {% if query %}
+    {% if results %}
+      <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:16px;">
+        {{ results|length }} result{{ results|length|pluralize }} for "<strong style="color:var(--text-primary);">{{ query }}</strong>"
+      </p>
+      {% for u in results %}
+      <div class="result-card">
+        <div class="user-av">{{ u.username|first|upper }}</div>
+        <div class="user-info">
+          <div class="uname">{{ u.username }}
+            {% if u.is_staff %}<span class="badge badge-blue">Staff</span>{% endif %}
+            {% if u.is_active %}<span class="badge badge-green">Active</span>{% else %}<span class="badge badge-gray">Inactive</span>{% endif %}
+          </div>
+          <div class="uemail">{{ u.email }}</div>
+          <div style="font-size:0.73rem;color:var(--text-muted);margin-top:2px;">Joined {{ u.date_joined }}</div>
+        </div>
+        <div class="user-stats">
+          <div class="user-stat"><div class="val">{{ u.sent }}</div><div class="lbl">Sent</div></div>
+          <div class="user-stat"><div class="val">{{ u.received }}</div><div class="lbl">Received</div></div>
+          <div class="user-stat"><div class="val">{{ u.groups }}</div><div class="lbl">Groups</div></div>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        <i class="fas fa-user-slash"></i>
+        No users found matching "<strong>{{ query }}</strong>"
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="hint-text">
+      <i class="fas fa-search" style="font-size:2rem;display:block;margin-bottom:12px;color:var(--accent);opacity:0.5;"></i>
+      Enter a username or email above to search
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
