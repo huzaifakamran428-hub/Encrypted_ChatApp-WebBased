@@ -19,7 +19,7 @@ SECRET_KEY = os.environ.get(
     "SECRET_KEY", "django-insecure-chatapp-secret-key-change-in-production-2024"
 )
 
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ["*"]
 
@@ -46,6 +46,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "chatapp.urls"
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 TEMPLATES = [
     {
@@ -121,6 +122,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://*.ngrok-free.app",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
+    "https://encryptedchatapp-webbased-production.up.railway.app",
 ]
 
 # ── Email Settings (for OTP verification) ──────────────────────────────────
