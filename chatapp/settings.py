@@ -19,7 +19,7 @@ SECRET_KEY = os.environ.get(
     "SECRET_KEY", "django-insecure-chatapp-secret-key-change-in-production-2024"
 )
 
-DEBUG = True
+DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = ["*"]
 
@@ -119,6 +119,7 @@ LOGOUT_REDIRECT_URL = "/users/login/"
 CSRF_TRUSTED_ORIGINS = [
     "https://*.trycloudflare.com",
     "https://*.ngrok-free.app",
+    "https://*.railway.app",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
 ]
