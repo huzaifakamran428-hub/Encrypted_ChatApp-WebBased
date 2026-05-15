@@ -19,11 +19,8 @@ SECRET_KEY = os.environ.get(
     "SECRET_KEY", "django-insecure-chatapp-secret-key-change-in-production-2024"
 )
 
-# Replace DEBUG line with:
-DEBUG = os.environ.get("DEBUG", "False") == "True"
+DEBUG = True
 
-
-# Update ALLOWED_HOSTS:
 ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
@@ -78,15 +75,17 @@ CHANNEL_LAYERS = {
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": os.environ.get("MYSQLDB", "railway"),
-        "USER": os.environ.get("MYSQLUSER", "root"),
-        "PASSWORD": os.environ.get("MYSQLPASSWORD", "root"),
-        "HOST": os.environ.get("MYSQLHOST", "localhost"),
-        "PORT": os.environ.get("MYSQLPORT", "3306"),
+        "NAME": os.environ.get("DB_NAME", "chatapp_db"),
+        "USER": os.environ.get("DB_USER", "root"),
+        "PASSWORD": os.environ.get("DB_PASSWORD", "root"),
+        "HOST": os.environ.get("DB_HOST", "localhost"),
+        "PORT": os.environ.get("DB_PORT", "3306"),
+        "OPTIONS": {
+            "charset": "utf8mb4",
+            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
 }
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
-
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -122,10 +121,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://*.ngrok-free.app",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    "https://encryptedchatapp-webbased-production.up.railway.app",
 ]
-
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # ── Email Settings (for OTP verification) ──────────────────────────────────
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
