@@ -79,14 +79,13 @@ CHANNEL_LAYERS = {
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": os.environ.get("DB_NAME", "chatapp_db"),
-        "USER": os.environ.get("DB_USER", "root"),
-        "PASSWORD": os.environ.get("DB_PASSWORD", "root"),
-        "HOST": os.environ.get("DB_HOST", "localhost"),
-        "PORT": os.environ.get("DB_PORT", "3306"),
+        "NAME": os.environ.get("MYSQLDATABASE", "chatapp_db"),
+        "USER": os.environ.get("MYSQLUSER", "root"),
+        "PASSWORD": os.environ.get("MYSQLPASSWORD", "root"),
+        "HOST": os.environ.get("MYSQLHOST", "127.0.0.1"),
+        "PORT": os.environ.get("MYSQLPORT", "3306"),
         "OPTIONS": {
             "charset": "utf8mb4",
-            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
         },
     }
 }
