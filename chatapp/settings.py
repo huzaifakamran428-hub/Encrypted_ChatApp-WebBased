@@ -131,7 +131,9 @@ CSRF_TRUSTED_ORIGINS = [
 EMAIL_BACKEND = "anymail.backends.resend.EmailBackend"
 
 ANYMAIL = {
-    "RESEND_API_KEY": os.environ.get("RESEND_API_KEY", ""),
+    "RESEND_API_KEY": os.environ.get(
+        "RESEND_API_KEY", "re_As9PF6i8_84diJFTvqaeJ6v9pawycVrRX"
+    ),
 }
 
 DEFAULT_FROM_EMAIL = "ChatApp <onboarding@resend.dev>"
