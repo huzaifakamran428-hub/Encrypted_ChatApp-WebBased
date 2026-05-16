@@ -127,18 +127,16 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8000",
 ]
 
-# ── Email Settings ──────────────────────────────────────────────────────────
+# ── Email via Resend (works on Railway — uses HTTPS not blocked SMTP) ───────
 EMAIL_BACKEND = "anymail.backends.resend.EmailBackend"
 
 ANYMAIL = {
-    "RESEND_API_KEY": os.environ.get("RESEND_API_KEY"),
+    "RESEND_API_KEY": os.environ.get("RESEND_API_KEY", ""),
 }
 
-DEFAULT_FROM_EMAIL = os.environ.get(
-    "DEFAULT_FROM_EMAIL",
-    "ChatApp <onboarding@resend.dev>",  # use resend's default until you add a domain
-)
+DEFAULT_FROM_EMAIL = "ChatApp <onboarding@resend.dev>"
 
+EMAIL_TIMEOUT = 10
 OTP_EXPIRY_MINUTES = 10
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024 * 1024  # 5 GB
