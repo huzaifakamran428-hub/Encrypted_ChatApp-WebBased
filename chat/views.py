@@ -330,7 +330,8 @@ def admin_dashboard_view(request):
             'file_type': msg.file_type,
         })
 
-    all_users = User.objects.exclude(username='None').values('username','email','is_active','date_joined').order_by('-date_joined')[:50]
+    # Show ALL users (including those without email). Ghost 'None' user filtered in template.
+    all_users = User.objects.all().values('username', 'email', 'is_active', 'date_joined').order_by('-date_joined')
 
     ctx = {
         'total_users':     total_users,
