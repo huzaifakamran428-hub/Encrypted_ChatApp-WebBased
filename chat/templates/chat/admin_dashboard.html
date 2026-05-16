@@ -320,7 +320,6 @@ async function addUser() {
       <td><span id="status-badge-${d.username}" class="badge-active">Active</span></td>
       <td style="color:var(--text-muted);font-size:0.78rem;">${d.date_joined||'Just now'}</td>
       <td style="text-align:right;">
-        <a href="/chat/room/${d.username}/" title="Message this user" style="display:inline-flex;align-items:center;gap:4px;background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 10px;font-size:0.72rem;cursor:pointer;color:var(--accent);margin-right:4px;text-decoration:none;"><i class="fas fa-comment"></i> Message</a>
         <button onclick="toggleUser('${d.username}')" id="toggle-btn-${d.username}" style="background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 10px;font-size:0.72rem;cursor:pointer;color:var(--text-secondary);margin-right:4px;"><i class="fas fa-ban"></i> Deactivate</button>
         <button onclick="deleteUser('${d.username}')" style="background:none;border:1px solid rgba(246,109,109,0.3);border-radius:var(--radius-sm);padding:4px 10px;font-size:0.72rem;cursor:pointer;color:var(--danger);"><i class="fas fa-trash-alt"></i></button>
       </td>`;

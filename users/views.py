@@ -1,744 +1,318 @@
-"""
-Chat views — all messages saved with AES-256 encryption (AES-256-CBC).
-Encryption/Decryption handled by chat.encryption module.
-"""
-import json
-import os
-import uuid
-from django.shortcuts import render, get_object_or_404, redirect
+import random
+import string
+import re
+from datetime import timedelta
+
+from django.shortcuts import render, redirect
+from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import get_user_model
-from django.db.models import Q
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
-from django.views.decorators.csrf import csrf_protect
-from django.contrib import messages as django_messages
+from django.contrib import messages
+from django.core.mail import send_mail
+from django.conf import settings as django_settings
 from django.utils import timezone
-from .models import Message, Group, GroupMessage
-from .encryption import encrypt_message, decrypt_message
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST, require_GET
 
-User = get_user_model()
-MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024  # 5 GB
-
-
-def get_file_type(name):
-    ext = (name.split('.')[-1] if '.' in name else '').lower()
-    if ext in ['jpg','jpeg','png','gif','webp','bmp','svg']: return 'image'
-    if ext in ['mp4','webm','mov','avi','mkv','flv','wmv','m4v']: return 'video'
-    if ext in ['mp3','wav','ogg','aac','flac','m4a']: return 'audio'
-    if ext == 'pdf': return 'pdf'
-    if ext in ['zip','rar','7z','tar','gz']: return 'archive'
-    return 'document'
+from .forms import RegisterForm, LoginForm, AvatarForm
+from .models import CustomUser
 
 
-def format_size(b):
-    if b < 1024: return f'{b} B'
-    if b < 1024**2: return f'{b/1024:.1f} KB'
-    if b < 1024**3: return f'{b/1048576:.1f} MB'
-    return f'{b/1073741824:.2f} GB'
+@require_GET
+def check_username_view(request):
+    """AJAX — check if a username is available and valid."""
+    username = request.GET.get('username', '').strip()
+    if not username:
+        return JsonResponse({'available': False, 'error': 'Username is required.'})
+    if ' ' in username:
+        return JsonResponse({'available': False, 'error': 'Username cannot contain spaces.'})
+    if len(username) < 3:
+        return JsonResponse({'available': False, 'error': 'Username must be at least 3 characters.'})
+    if len(username) > 30:
+        return JsonResponse({'available': False, 'error': 'Username cannot exceed 30 characters.'})
+    if not re.match(r'^[\w.@+-]+$', username):
+        return JsonResponse({'available': False, 'error': 'Only letters, numbers, and @/./+/-/_ allowed.'})
+    if CustomUser.objects.filter(username__iexact=username).exists():
+        return JsonResponse({'available': False, 'error': 'This username is already taken.'})
+    return JsonResponse({'available': True, 'message': 'Username is available!'})
+from .models import CustomUser
 
 
-@login_required
-def home_view(request):
-    sent_to       = Message.objects.filter(sender=request.user).values_list('receiver', flat=True)
-    received_from = Message.objects.filter(receiver=request.user).values_list('sender', flat=True)
-    chatted_ids   = set(list(sent_to) + list(received_from))
-
-    conversations = []
-    for uid in chatted_ids:
-        try:
-            other = User.objects.get(pk=uid)
-        except User.DoesNotExist:
-            continue
-        # Hide admin conversations from non-admin users; skip ghost 'None' account
-        if other.is_superuser and not request.user.is_superuser:
-            continue
-        if other.username == 'None':
-            continue
-        last  = Message.objects.filter(
-            Q(sender=request.user, receiver=other) |
-            Q(sender=other, receiver=request.user)
-        ).order_by('-timestamp').first()
-        unread = Message.objects.filter(sender=other, receiver=request.user, is_read=False).count()
-        conversations.append({'user': other, 'last_message': last, 'unread_count': unread})
-
-    conversations.sort(
-        key=lambda x: x['last_message'].timestamp if x['last_message'] else 0, reverse=True)
-    # Exclude superusers from People sidebar for non-admin users
-    if request.user.is_superuser:
-        all_users = User.objects.exclude(pk=request.user.pk).exclude(pk__in=chatted_ids).exclude(username='None')
-    else:
-        all_users = User.objects.exclude(pk=request.user.pk).exclude(pk__in=chatted_ids).exclude(is_superuser=True).exclude(username='None')
-    user_groups = request.user.group_memberships.all().order_by('-created_at')
-
-    return render(request, 'chat/home.html', {
-        'conversations': conversations,
-        'all_users': all_users,
-        'user_groups': user_groups,
-    })
+def _generate_otp():
+    return ''.join(random.choices(string.digits, k=4))
 
 
-@login_required
-def chat_room_view(request, username):
-    other_user = get_object_or_404(User, username=username)
-    if other_user == request.user:
+def register_view(request):
+    if request.user.is_authenticated:
         return redirect('chat:home')
-    # Non-admin users cannot open a chat with an admin/superuser
-    if other_user.is_superuser and not request.user.is_superuser:
-        from django.contrib import messages as dj_msg
-        dj_msg.error(request, 'This user is not available for direct messaging.')
-        return redirect('chat:home')
-    messages_qs = Message.objects.filter(
-        Q(sender=request.user, receiver=other_user) |
-        Q(sender=other_user, receiver=request.user)
-    ).order_by('timestamp')
-    Message.objects.filter(
-        sender=other_user, receiver=request.user, is_read=False).update(is_read=True)
-    return render(request, 'chat/room.html', {
-        'other_user': other_user,
-        'messages': messages_qs,
-    })
-
-
-@login_required
-def search_users_view(request):
-    query   = request.GET.get('q', '').strip()
-    results = []
-    if query:
-        results = User.objects.filter(username__icontains=query).exclude(pk=request.user.pk)
-        if not request.user.is_superuser:
-            results = results.exclude(is_superuser=True)
-    return render(request, 'chat/search.html', {'results': results, 'query': query})
-
-
-# ── Group Views ────────────────────────────────────────────────────────────────
-
-@login_required
-def create_group_view(request):
-    if request.user.is_superuser:
-        all_users = User.objects.exclude(pk=request.user.pk)
-    else:
-        all_users = User.objects.exclude(pk=request.user.pk).exclude(is_superuser=True)
     if request.method == 'POST':
-        name       = request.POST.get('name', '').strip()
-        desc       = request.POST.get('description', '').strip()
-        member_ids = request.POST.getlist('members')
-        icon       = request.FILES.get('icon')
-        if not name:
-            django_messages.error(request, 'Group name is required.')
-            return render(request, 'chat/create_group.html', {'all_users': all_users})
-        group = Group.objects.create(name=name, description=desc, created_by=request.user)
-        if icon:
-            group.icon = icon; group.save()
-        group.members.add(request.user)
-        for uid in member_ids:
-            try: group.members.add(User.objects.get(pk=uid))
-            except User.DoesNotExist: pass
-        django_messages.success(request, f'Group "{name}" created!')
-        return redirect('chat:group_room', group_id=group.id)
-    return render(request, 'chat/create_group.html', {'all_users': all_users})
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            username = form.cleaned_data['username']
+            email    = form.cleaned_data['email']
+            password = form.cleaned_data['password1']
+
+            # Email OTP must have been verified for this exact email address
+            verified_email = request.session.get('email_otp_verified')
+            if verified_email != email:
+                messages.error(request, 'Please verify your email address before creating your account.')
+                return render(request, 'users/register.html', {'form': form})
+
+            try:
+                user = CustomUser.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=password,
+                )
+                for k in ('email_otp_code', 'email_otp_expiry', 'email_otp_email', 'email_otp_verified'):
+                    request.session.pop(k, None)
+                login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                messages.success(request, f'Welcome, {user.username}! Your account has been created.')
+                return redirect('chat:home')
+            except Exception as e:
+                messages.error(request, f'Account creation failed: {str(e)}. Please try again.')
+                return render(request, 'users/register.html', {'form': form})
+    else:
+        form = RegisterForm()
+    return render(request, 'users/register.html', {'form': form})
 
 
-@login_required
-def group_room_view(request, group_id):
-    group = get_object_or_404(Group, id=group_id)
-    if not group.members.filter(id=request.user.id).exists():
-        django_messages.error(request, 'You are not a member of this group.')
-        return redirect('chat:home')
-    msgs    = GroupMessage.objects.filter(group=group).select_related('sender').order_by('timestamp')
-    members = group.members.all()
-    return render(request, 'chat/group_room.html', {
-        'group': group, 'messages': msgs,
-        'members': members, 'is_admin': group.created_by == request.user,
-    })
-
-
-@login_required
 @require_POST
-def group_upload_file_view(request, group_id):
-    group = get_object_or_404(Group, id=group_id)
-    if not group.members.filter(id=request.user.id).exists():
-        return JsonResponse({'error': 'Not a member'}, status=403)
-    f = request.FILES.get('file')
-    if not f: return JsonResponse({'error': 'No file'}, status=400)
-    if f.size > MAX_FILE_SIZE: return JsonResponse({'error': 'File exceeds 5 GB'}, status=400)
-    ft = get_file_type(f.name)
-    msg = GroupMessage(group=group, sender=request.user, file_name=f.name, file_type=ft)
-    msg.set_message('')  # no text content for file messages
-    msg.file = f
-    msg.save()
-    return JsonResponse({
-        'ok': True, 'message_id': msg.id, 'sender': request.user.username,
-        'timestamp': timezone.localtime(msg.timestamp).strftime('%I:%M %p'),
-        'file_url': msg.file.url, 'file_name': f.name,
-        'file_type': ft, 'file_size': format_size(f.size),
-    })
-
-
-@login_required
-@require_POST
-def add_member_view(request, group_id):
-    group    = get_object_or_404(Group, id=group_id, created_by=request.user)
-    username = request.POST.get('username', '').strip()
+def send_email_otp_view(request):
+    """AJAX — generate a 4-digit OTP, email it to the user, store in session."""
+    import json
     try:
-        user = User.objects.get(username=username)
-        group.members.add(user)
-        django_messages.success(request, f'{username} added.')
-    except User.DoesNotExist:
-        django_messages.error(request, f'User "{username}" not found.')
-    return redirect('chat:group_room', group_id=group_id)
+        data  = json.loads(request.body)
+        email = (data.get('email') or '').strip()
+    except Exception:
+        email = request.POST.get('email', '').strip()
 
+    if not email:
+        return JsonResponse({'ok': False, 'error': 'Email address is required.'})
 
-@login_required
-@require_POST
-def leave_group_view(request, group_id):
-    group = get_object_or_404(Group, id=group_id)
-    group.members.remove(request.user)
-    django_messages.success(request, f'You left "{group.name}".')
-    return redirect('chat:home')
+    if CustomUser.objects.filter(email=email).exists():
+        return JsonResponse({'ok': False, 'error': 'An account with this email already exists.'})
 
+    otp    = _generate_otp()
+    expiry = (timezone.now() + timedelta(minutes=django_settings.OTP_EXPIRY_MINUTES)).isoformat()
 
-# ── HTTP fallback send (no WS) ─────────────────────────────────────────────────
+    # Store in session — reset verified flag so a new code always invalidates old verification
+    request.session['email_otp_code']     = otp
+    request.session['email_otp_expiry']   = expiry
+    request.session['email_otp_email']    = email
+    request.session['email_otp_verified'] = None
 
-@login_required
-@require_POST
-@csrf_protect
-def send_message_view(request):
     try:
-        data     = json.loads(request.body)
-        plaintext = data.get('message', '').strip()
-        recv_name = data.get('receiver', '')
-        if not plaintext or not recv_name:
-            return JsonResponse({'error': 'Missing data'}, status=400)
-        receiver = get_object_or_404(User, username=recv_name)
-        msg = Message(sender=request.user, receiver=receiver)
-        msg.set_message(plaintext)   # ← AES-256 encrypt
-        msg.save()
+        send_mail(
+            subject='Your ChatApp Verification Code',
+            message=(
+                f'Your ChatApp email verification code is: {otp}\n\n'
+                f'Enter this code on the registration page to verify your email.\n'
+                f'This code expires in {django_settings.OTP_EXPIRY_MINUTES} minutes.\n\n'
+                f'If you did not request this, please ignore this email.\n\n'
+                f'— ChatApp Team'
+            ),
+            html_message=f'''
+            <div style="font-family:'Segoe UI',sans-serif;max-width:460px;margin:auto;
+                        background:#0f0f13;color:#e8e8f0;padding:40px 36px;
+                        border-radius:16px;border:1px solid #2e2e42;">
+                <div style="text-align:center;margin-bottom:28px;">
+                    <div style="display:inline-flex;align-items:center;gap:10px;">
+                        <img src="https://huzaifakamran.site/static/img/favicon-192.png"
+                             width="38" height="38"
+                             style="display:inline-block;vertical-align:middle;border-radius:50%;"
+                             alt="ChatApp">
+                        <span style="font-size:1.6rem;font-weight:800;color:#7c6af7;vertical-align:middle;">ChatApp</span>
+                    </div>
+                </div>
+                <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:6px;color:#e8e8f0;">
+                    Verify your email address
+                </h2>
+                <p style="color:#9090a8;font-size:0.9rem;margin-bottom:24px;">
+                    Enter the code below on the registration page to verify
+                    <strong style="color:#7c6af7;">{email}</strong>
+                </p>
+                <div style="background:#22222f;border:2px solid #7c6af7;border-radius:14px;
+                            padding:28px;text-align:center;margin-bottom:24px;">
+                    <p style="color:#9090a8;font-size:0.78rem;margin-bottom:10px;
+                               letter-spacing:0.05em;text-transform:uppercase;">
+                        Your verification code
+                    </p>
+                    <div style="letter-spacing:18px;font-size:2.6rem;font-weight:900;
+                                color:#7c6af7;font-variant-numeric:tabular-nums;">
+                        {otp}
+                    </div>
+                </div>
+                <p style="color:#5c5c78;font-size:0.78rem;text-align:center;">
+                    Expires in <strong style="color:#9090a8;">
+                    {django_settings.OTP_EXPIRY_MINUTES} minutes</strong>.
+                    If you did not request this, ignore this email.
+                </p>
+            </div>
+            ''',
+            from_email=django_settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        return JsonResponse({'ok': True, 'message': f'Verification code sent to {email}'})
+
+    except Exception as exc:
+        # Clear the session so a stale code is never silently accepted
+        for k in ('email_otp_code', 'email_otp_expiry', 'email_otp_email'):
+            request.session.pop(k, None)
+        import logging
+        logging.getLogger(__name__).error('Email send failed: %s', exc)
         return JsonResponse({
-            'ok': True, 'message': plaintext, 'sender': request.user.username,
-            'timestamp': timezone.localtime(msg.timestamp).strftime('%I:%M %p'),
-            'message_id': msg.id,
+            'ok': False,
+            'error': f'Could not send email: {exc}'
         })
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
 
 
-# ── File upload ────────────────────────────────────────────────────────────────
-
-@login_required
 @require_POST
-def upload_file_view(request):
-    recv_name = request.POST.get('receiver', '')
-    if not recv_name: return JsonResponse({'error': 'No receiver'}, status=400)
-    receiver = get_object_or_404(User, username=recv_name)
-    f = request.FILES.get('file')
-    if not f: return JsonResponse({'error': 'No file'}, status=400)
-    if f.size > MAX_FILE_SIZE: return JsonResponse({'error': 'File exceeds 5 GB'}, status=400)
-    ft = get_file_type(f.name)
-    msg = Message(sender=request.user, receiver=receiver, file_name=f.name, file_type=ft)
-    msg.set_message('')   # no text for file-only messages
-    msg.file = f
-    msg.save()
-    return JsonResponse({
-        'ok': True, 'message_id': msg.id, 'sender': request.user.username,
-        'timestamp': timezone.localtime(msg.timestamp).strftime('%I:%M %p'),
-        'file_url': msg.file.url, 'file_name': f.name,
-        'file_type': ft, 'file_size': format_size(f.size),
-    })
-
-
-# ── Voice upload ───────────────────────────────────────────────────────────────
-
-@login_required
-@require_POST
-def upload_voice_view(request):
-    recv_name = request.POST.get('receiver', '')
-    if not recv_name: return JsonResponse({'error': 'No receiver'}, status=400)
-    receiver  = get_object_or_404(User, username=recv_name)
-    blob      = request.FILES.get('voice')
-    if not blob: return JsonResponse({'error': 'No audio'}, status=400)
-    ct = blob.content_type or 'audio/webm'
-    ext = 'ogg' if 'ogg' in ct else 'webm'
-    blob.name = f'voice_{uuid.uuid4().hex}.{ext}'
-    msg = Message(sender=request.user, receiver=receiver, file_name=blob.name, file_type='voice')
-    msg.set_message('')
-    msg.file = blob
-    msg.save()
-    return JsonResponse({
-        'ok': True, 'message_id': msg.id, 'sender': request.user.username,
-        'sender_avatar': request.user.avatar.url if request.user.avatar else '',
-        'timestamp': timezone.localtime(msg.timestamp).strftime('%I:%M %p'),
-        'file_url': msg.file.url, 'file_name': blob.name, 'file_type': 'voice', 'file_size': '',
-    })
-
-
-@login_required
-@require_POST
-def upload_group_voice_view(request, group_id):
-    group = get_object_or_404(Group, id=group_id)
-    if not group.members.filter(id=request.user.id).exists():
-        return JsonResponse({'error': 'Not a member'}, status=403)
-    blob = request.FILES.get('voice')
-    if not blob: return JsonResponse({'error': 'No audio'}, status=400)
-    ct = blob.content_type or 'audio/webm'
-    ext = 'ogg' if 'ogg' in ct else 'webm'
-    blob.name = f'voice_{uuid.uuid4().hex}.{ext}'
-    msg = GroupMessage(group=group, sender=request.user, file_name=blob.name, file_type='voice')
-    msg.set_message('')
-    msg.file = blob
-    msg.save()
-    return JsonResponse({
-        'ok': True, 'message_id': msg.id, 'sender': request.user.username,
-        'sender_avatar': request.user.avatar.url if request.user.avatar else '',
-        'timestamp': timezone.localtime(msg.timestamp).strftime('%I:%M %p'),
-        'file_url': msg.file.url, 'file_name': blob.name, 'file_type': 'voice', 'file_size': '',
-    })
-
-
-# ── Admin Dashboard ─────────────────────────────────────────────────────────────
-@login_required
-def admin_dashboard_view(request):
-    """Super admin dashboard — only accessible to superusers."""
-    if not request.user.is_superuser:
-        from django.http import HttpResponseForbidden
-        return HttpResponseForbidden('Access denied. Superuser required.')
-
-    total_users      = User.objects.count()
-    total_messages   = Message.objects.count()
-    encrypted_msgs   = Message.objects.exclude(encrypted_content='').count()
-    group_chats      = Group.objects.count()
-    unread_messages  = Message.objects.filter(is_read=False).count()
-    files_shared     = Message.objects.exclude(file='').count()
-
-    # Recent 20 messages (decrypted for admin view)
-    recent_messages = []
-    for msg in Message.objects.select_related('sender','receiver').order_by('-timestamp')[:20]:
-        try:
-            content = msg.message_content if not msg.file else f'📎 {msg.file_name or "file"}'
-        except Exception:
-            content = '[encrypted]'
-        try:
-            receiver_username = msg.receiver.username if msg.receiver else '—'
-        except Exception:
-            receiver_username = '—'
-        recent_messages.append({
-            'sender':    msg.sender.username,
-            'receiver':  receiver_username,
-            'content':   content,
-            'timestamp': timezone.localtime(msg.timestamp).strftime('%H:%M'),
-            'encrypted': bool(msg.encrypted_content),
-            'file_type': msg.file_type,
-        })
-
-    # Show ALL users (including those without email). Ghost 'None' user filtered in template.
-    all_users = User.objects.all().values('username', 'email', 'is_active', 'date_joined').order_by('-date_joined')
-
-    ctx = {
-        'total_users':     total_users,
-        'total_messages':  total_messages,
-        'encrypted_msgs':  encrypted_msgs,
-        'group_chats':     group_chats,
-        'unread_messages': unread_messages,
-        'files_shared':    files_shared,
-        'recent_messages': recent_messages,
-        'all_users':       all_users,
-    }
-    return render(request, 'chat/admin_dashboard.html', ctx)
-
-
-# ── Admin Sub-Pages ──────────────────────────────────────────────────────────
-
-def _admin_required(view_func):
-    """Decorator: require superuser."""
-    from functools import wraps
-    from django.http import HttpResponseForbidden
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            from django.contrib.auth import REDIRECT_FIELD_NAME
-            from django.shortcuts import redirect as _redirect
-            return _redirect(f'/users/login/?next={request.path}')
-        if not request.user.is_superuser:
-            return HttpResponseForbidden('Access denied. Superuser required.')
-        return view_func(request, *args, **kwargs)
-    return wrapper
-
-
-@_admin_required
-def admin_users_view(request):
-    """Admin: full user list with search/filter."""
-    query = request.GET.get('q', '').strip()
-    users_qs = User.objects.all().order_by('-date_joined')
-    if query:
-        users_qs = users_qs.filter(
-            Q(username__icontains=query) | Q(email__icontains=query)
-        )
-    ctx = {
-        'users': users_qs,
-        'query': query,
-        'total': User.objects.count(),
-        'active': User.objects.filter(is_active=True).count(),
-        'staff': User.objects.filter(is_staff=True).count(),
-    }
-    return render(request, 'chat/admin_users.html', ctx)
-
-
-@_admin_required
-def admin_messages_view(request):
-    """Admin: all DM messages."""
-    query = request.GET.get('q', '').strip()
-    msgs_qs = Message.objects.select_related('sender', 'receiver').order_by('-timestamp')
-    if query:
-        msgs_qs = msgs_qs.filter(
-            Q(sender__username__icontains=query) | Q(receiver__username__icontains=query)
-        )
-    all_messages = []
-    for msg in msgs_qs[:200]:
-        try:
-            content = msg.message_content if not msg.file else f'📎 {msg.file_name or "file"}'
-        except Exception:
-            content = '[encrypted]'
-        all_messages.append({
-            'id':        msg.id,
-            'sender':    msg.sender.username,
-            'receiver':  msg.receiver.username,
-            'content':   content,
-            'timestamp': timezone.localtime(msg.timestamp).strftime('%Y-%m-%d %H:%M'),
-            'encrypted': bool(msg.encrypted_content),
-            'file_type': msg.file_type,
-            'is_read':   msg.is_read,
-        })
-    ctx = {
-        'messages':   all_messages,
-        'total':      Message.objects.count(),
-        'unread':     Message.objects.filter(is_read=False).count(),
-        'with_files': Message.objects.exclude(file='').count(),
-        'query':      query,
-    }
-    return render(request, 'chat/admin_messages.html', ctx)
-
-
-@_admin_required
-def admin_groups_view(request):
-    """Admin: all group chats."""
-    groups = Group.objects.prefetch_related('members').select_related('created_by').order_by('-created_at')
-    group_data = []
-    for g in groups:
-        group_data.append({
-            'id':         g.id,
-            'name':       g.name,
-            'description': g.description,
-            'created_by': g.created_by.username,
-            'members':    g.members.count(),
-            'messages':   GroupMessage.objects.filter(group=g).count(),
-            'created_at': timezone.localtime(g.created_at).strftime('%Y-%m-%d'),
-        })
-    ctx = {
-        'groups': group_data,
-        'total':  Group.objects.count(),
-    }
-    return render(request, 'chat/admin_groups.html', ctx)
-
-
-@_admin_required
-def admin_group_messages_view(request):
-    """Admin: all group messages."""
-    query    = request.GET.get('q', '').strip()
-    group_id = request.GET.get('group', '').strip()
-    msgs_qs  = GroupMessage.objects.select_related('sender', 'group').order_by('-timestamp')
-    if query:
-        msgs_qs = msgs_qs.filter(
-            Q(sender__username__icontains=query) | Q(group__name__icontains=query)
-        )
-    if group_id:
-        msgs_qs = msgs_qs.filter(group_id=group_id)
-    all_messages = []
-    for msg in msgs_qs[:200]:
-        try:
-            content = msg.message_content if not msg.file else f'📎 {msg.file_name or "file"}'
-        except Exception:
-            content = '[encrypted]'
-        all_messages.append({
-            'id':        msg.id,
-            'sender':    msg.sender.username,
-            'group':     msg.group.name,
-            'group_id':  msg.group.id,
-            'content':   content,
-            'timestamp': timezone.localtime(msg.timestamp).strftime('%Y-%m-%d %H:%M'),
-            'file_type': msg.file_type,
-        })
-    groups = Group.objects.all().order_by('name')
-    ctx = {
-        'messages': all_messages,
-        'total':    GroupMessage.objects.count(),
-        'query':    query,
-        'groups':   groups,
-        'sel_group': group_id,
-    }
-    return render(request, 'chat/admin_group_messages.html', ctx)
-
-
-@_admin_required
-def admin_search_view(request):
-    """Admin: search users by username/email."""
-    query = request.GET.get('q', '').strip()
-    results = []
-    if query:
-        users = User.objects.filter(
-            Q(username__icontains=query) | Q(email__icontains=query)
-        ).order_by('username')
-        for u in users:
-            sent = Message.objects.filter(sender=u).count()
-            recv = Message.objects.filter(receiver=u).count()
-            results.append({
-                'username':   u.username,
-                'email':      u.email,
-                'is_active':  u.is_active,
-                'is_staff':   u.is_staff,
-                'date_joined': timezone.localtime(u.date_joined).strftime('%Y-%m-%d') if u.date_joined else '',
-                'sent':       sent,
-                'received':   recv,
-                'groups':     u.group_memberships.count(),
-            })
-    ctx = {'query': query, 'results': results}
-    return render(request, 'chat/admin_search.html', ctx)
-
-
-# ── Admin User Management API ─────────────────────────────────────────────────
-
-@_admin_required
-@require_POST
-def admin_add_user_view(request):
-    """Admin: create a new user."""
-    import json as _json
+def verify_email_otp_view(request):
+    """AJAX — validate the OTP the user typed; mark email as verified in session."""
+    import json
     try:
-        data     = _json.loads(request.body)
-        username = data.get('username', '').strip()
-        email    = data.get('email', '').strip()
-        password = data.get('password', '').strip()
-        if not username or not password:
-            return JsonResponse({'error': 'Username and password are required.'}, status=400)
-        if User.objects.filter(username=username).exists():
-            return JsonResponse({'error': f'Username "{username}" already exists.'}, status=400)
-        if email and User.objects.filter(email=email).exists():
-            return JsonResponse({'error': f'Email "{email}" already in use.'}, status=400)
-        user = User.objects.create_user(username=username, email=email, password=password)
-        return JsonResponse({'ok': True, 'username': user.username, 'email': user.email,
-                             'date_joined': timezone.localtime(user.date_joined).strftime('%Y-%m-%d %H:%M')})
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        data  = json.loads(request.body)
+        code  = (data.get('code') or '').strip()
+        email = (data.get('email') or '').strip()
+    except Exception:
+        code  = request.POST.get('code', '').strip()
+        email = request.POST.get('email', '').strip()
 
+    stored_otp   = request.session.get('email_otp_code', '')
+    stored_email = request.session.get('email_otp_email', '')
+    otp_expiry   = request.session.get('email_otp_expiry', '')
 
-@_admin_required
-@require_POST
-def admin_delete_user_view(request, username):
-    """Admin: permanently delete a user."""
-    try:
-        user = get_object_or_404(User, username=username)
-        if user == request.user:
-            return JsonResponse({'error': 'You cannot delete your own account.'}, status=400)
-        user.delete()
+    if not stored_otp or not stored_email:
+        return JsonResponse({'ok': False, 'error': 'No code found. Please request a new code first.'})
+
+    if email != stored_email:
+        return JsonResponse({'ok': False, 'error': 'Email mismatch. Please request a new code.'})
+
+    if otp_expiry:
+        from django.utils.dateparse import parse_datetime
+        expiry_dt = parse_datetime(otp_expiry)
+        if expiry_dt and timezone.now() > expiry_dt:
+            return JsonResponse({'ok': False, 'error': 'Code expired. Please request a new one.'})
+
+    if code == stored_otp:
+        request.session['email_otp_verified'] = email
         return JsonResponse({'ok': True})
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'ok': False, 'error': 'Incorrect code. Please try again.'})
 
 
-@_admin_required
-@require_POST
-def admin_toggle_user_view(request, username):
-    """Admin: activate or deactivate a user."""
-    try:
-        user = get_object_or_404(User, username=username)
-        if user == request.user:
-            return JsonResponse({'error': 'You cannot deactivate your own account.'}, status=400)
-        user.is_active = not user.is_active
-        user.save(update_fields=['is_active'])
-        return JsonResponse({'ok': True, 'is_active': user.is_active})
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-
-# ── Message Delete API ─────────────────────────────────────────────────────────
-
-@login_required
-@require_POST
-def delete_message_view(request, message_id):
-    """Delete a single DM (only superuser/admin can delete)."""
-    if not request.user.is_superuser:
-        return JsonResponse({'error': 'Only admin can delete messages.'}, status=403)
-    try:
-        msg = get_object_or_404(Message, id=message_id)
-        msg.delete()
-        return JsonResponse({'ok': True})
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-
-@login_required
-@require_POST
-def delete_all_messages_view(request, username):
-    """Delete all DMs between current user and other user (superuser only)."""
-    if not request.user.is_superuser:
-        return JsonResponse({'error': 'Only admin can delete all messages.'}, status=403)
-    other = get_object_or_404(User, username=username)
-    Message.objects.filter(
-        Q(sender=request.user, receiver=other) |
-        Q(sender=other, receiver=request.user)
-    ).delete()
-    return JsonResponse({'ok': True})
-
-
-@login_required
-@require_POST
-def delete_group_message_view(request, message_id):
-    """Delete a single group message (only superuser/admin can delete)."""
-    if not request.user.is_superuser:
-        return JsonResponse({'error': 'Only admin can delete messages.'}, status=403)
-    try:
-        msg = get_object_or_404(GroupMessage, id=message_id)
-        msg.delete()
-        return JsonResponse({'ok': True})
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-
-@login_required
-@require_POST
-def delete_all_group_messages_view(request, group_id):
-    """Delete all messages in a group (superuser or group admin can do this)."""
-    group = get_object_or_404(Group, id=group_id)
-    if not request.user.is_superuser and group.created_by != request.user:
-        return JsonResponse({'error': 'Only admin can clear all messages.'}, status=403)
-    GroupMessage.objects.filter(group=group).delete()
-    return JsonResponse({'ok': True})
-
-
-@login_required
-def poll_conversations_view(request):
-    """
-    Polling endpoint for the home page conversation list.
-    Returns each conversation's last message preview, unread count, timestamp,
-    and the last message_id — so the home page updates without a full refresh.
-    """
-    sent_to       = Message.objects.filter(sender=request.user).values_list('receiver', flat=True)
-    received_from = Message.objects.filter(receiver=request.user).values_list('sender', flat=True)
-    chatted_ids   = set(list(sent_to) + list(received_from))
-
-    results = []
-    for uid in chatted_ids:
-        try:
-            other = User.objects.get(pk=uid)
-        except User.DoesNotExist:
-            continue
-        if other.is_superuser and not request.user.is_superuser:
-            continue
-        last = Message.objects.filter(
-            Q(sender=request.user, receiver=other) |
-            Q(sender=other, receiver=request.user)
-        ).order_by('-timestamp').first()
-        unread = Message.objects.filter(sender=other, receiver=request.user, is_read=False).count()
-        avatar = other.avatar.url if other.avatar else ''
-
-        if last:
-            if last.file:
-                preview = f'📎 {last.file_name or "file"}'
-            else:
-                preview = last.message_content[:50] if last.message_content else ''
-            if last.sender == request.user:
-                preview = 'You: ' + preview
-            ts = timezone.localtime(last.timestamp).strftime('%I:%M %p')
-            last_id = last.id
+def verify_otp_view(request):
+    pending = request.session.get('pending_registration')
+    if not pending:
+        messages.error(request, 'Registration session expired. Please start again.')
+        return redirect('users:register')
+    if request.method == 'POST':
+        entered_otp = ''.join([
+            request.POST.get('otp1', ''),
+            request.POST.get('otp2', ''),
+            request.POST.get('otp3', ''),
+            request.POST.get('otp4', ''),
+        ]).strip()
+        stored_otp = request.session.get('otp_code', '')
+        otp_expiry = request.session.get('otp_expiry', '')
+        if otp_expiry:
+            from django.utils.dateparse import parse_datetime
+            expiry_dt = parse_datetime(otp_expiry)
+            if expiry_dt and timezone.now() > expiry_dt:
+                messages.error(request, 'Verification code expired. Please register again.')
+                _clear_otp_session(request)
+                return redirect('users:register')
+        if entered_otp == stored_otp:
+            try:
+                if CustomUser.objects.filter(username=pending['username']).exists():
+                    _clear_otp_session(request)
+                    messages.error(request, f'Username "{pending["username"]}" was just taken.')
+                    return redirect('users:register')
+                if CustomUser.objects.filter(email=pending['email']).exists():
+                    _clear_otp_session(request)
+                    messages.error(request, f'Email "{pending["email"]}" is already registered.')
+                    return redirect('users:login')
+                user = CustomUser.objects.create_user(
+                    username=pending['username'],
+                    email=pending['email'],
+                    password=pending['password'],
+                )
+                _clear_otp_session(request)
+                login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                messages.success(request, f'Welcome, {user.username}!')
+                return redirect('chat:home')
+            except Exception as e:
+                messages.error(request, f'Account creation failed: {str(e)}.')
+                _clear_otp_session(request)
+                return redirect('users:register')
         else:
-            preview = ''
-            ts = ''
-            last_id = 0
+            messages.error(request, 'Incorrect verification code.')
+    email = request.session.get('otp_email', '')
+    return render(request, 'users/verify_otp.html', {'email': email})
 
-        results.append({
-            'username': other.username,
-            'avatar': avatar,
-            'preview': preview,
-            'timestamp': ts,
-            'unread': unread,
-            'last_id': last_id,
-            'chat_url': f'/chat/room/{other.username}/',
-        })
 
-    # Sort by last_id descending (newest conversation first)
-    results.sort(key=lambda x: x['last_id'], reverse=True)
-    return JsonResponse({'conversations': results})
+def resend_otp_view(request):
+    pending = request.session.get('pending_registration')
+    if not pending:
+        return JsonResponse({'error': 'Session expired'}, status=400)
+    otp    = _generate_otp()
+    expiry = (timezone.now() + timedelta(minutes=django_settings.OTP_EXPIRY_MINUTES)).isoformat()
+    request.session['otp_code']   = otp
+    request.session['otp_expiry'] = expiry
+    try:
+        send_mail(
+            subject='Your ChatApp Verification Code (Resent)',
+            message=f'Your new code is: {otp}. Expires in {django_settings.OTP_EXPIRY_MINUTES} minutes.',
+            from_email=django_settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[pending['email']],
+            fail_silently=True,
+        )
+        return JsonResponse({'ok': True, 'message': f'New code sent to {pending["email"]}'})
+    except Exception:
+        return JsonResponse({'ok': False, 'message': 'Failed to resend. Please try again.'})
+
+
+def _clear_otp_session(request):
+    for k in ('pending_registration', 'otp_code', 'otp_expiry', 'otp_email'):
+        request.session.pop(k, None)
+
+
+def login_view(request):
+    if request.user.is_authenticated:
+        return redirect('chat:home')
+    if request.method == 'POST':
+        form = LoginForm(request, data=request.POST)
+        if form.is_valid():
+            user = form.get_user()
+            login(request, user)
+            messages.success(request, f'Welcome back, {user.username}!')
+            next_url = request.GET.get('next', 'chat:home')
+            return redirect(next_url)
+        else:
+            messages.error(request, 'Invalid username or password.')
+    else:
+        form = LoginForm()
+    return render(request, 'users/login.html', {'form': form})
 
 
 @login_required
-def poll_new_messages_view(request, username):
-    """
-    Polling fallback for real-time messages.
-    Returns all messages between current user and `username` with id > since_id.
-    Used when WebSocket broadcast fails (e.g. Cloudflare tunnel / InMemoryChannelLayer).
-    """
-    since_id = int(request.GET.get('since', 0))
-    other_user = get_object_or_404(User, username=username)
-    msgs = Message.objects.filter(
-        Q(sender=request.user, receiver=other_user) |
-        Q(sender=other_user, receiver=request.user),
-        id__gt=since_id
-    ).order_by('id')
-
-    results = []
-    for msg in msgs:
-        avatar = msg.sender.avatar.url if msg.sender.avatar else ''
-        ts = timezone.localtime(msg.timestamp).strftime('%I:%M %p')
-        entry = {
-            'message_id': msg.id,
-            'sender': msg.sender.username,
-            'sender_avatar': avatar,
-            'timestamp': ts,
-            'file_message': bool(msg.file),
-        }
-        if msg.file:
-            entry['file_url'] = msg.file.url
-            entry['file_name'] = msg.file_name or ''
-            entry['file_type'] = msg.file_type or 'document'
-            entry['file_size'] = format_size(msg.file.size) if msg.file else ''
-            entry['message'] = ''
-        else:
-            entry['message'] = msg.message_content
-        results.append(entry)
-
-    return JsonResponse({'messages': results})
+def logout_view(request):
+    if request.method == 'POST':
+        logout(request)
+        messages.success(request, 'You have been logged out successfully.')
+        return redirect('users:login')
+    return render(request, 'users/logout_confirm.html')
 
 
 @login_required
-def poll_new_group_messages_view(request, group_id):
-    """Polling fallback for group chat real-time messages."""
-    since_id = int(request.GET.get('since', 0))
-    group = get_object_or_404(Group, id=group_id)
-    if not group.members.filter(id=request.user.id).exists():
-        return JsonResponse({'error': 'Not a member'}, status=403)
-
-    msgs = GroupMessage.objects.filter(
-        group=group,
-        id__gt=since_id
-    ).order_by('id')
-
-    results = []
-    for msg in msgs:
-        avatar = msg.sender.avatar.url if msg.sender.avatar else ''
-        ts = timezone.localtime(msg.timestamp).strftime('%I:%M %p')
-        entry = {
-            'message_id': msg.id,
-            'sender': msg.sender.username,
-            'sender_avatar': avatar,
-            'timestamp': ts,
-            'file_message': bool(msg.file),
-        }
-        if msg.file:
-            entry['file_url'] = msg.file.url
-            entry['file_name'] = msg.file_name or ''
-            entry['file_type'] = msg.file_type or 'document'
-            entry['file_size'] = format_size(msg.file.size) if msg.file else ''
-            entry['message'] = ''
-        else:
-            entry['message'] = msg.message_content
-        results.append(entry)
-
-    return JsonResponse({'messages': results})
+def profile_view(request):
+    if request.method == 'POST':
+        form = AvatarForm(request.POST, request.FILES, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Profile updated!')
+            return redirect('users:profile')
+    else:
+        form = AvatarForm(instance=request.user)
+    return render(request, 'users/profile.html', {'user': request.user, 'form': form})
