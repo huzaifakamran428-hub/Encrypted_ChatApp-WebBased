@@ -3,56 +3,34 @@
 
 {% block extra_css %}
 <style>
-/* Force body to not scroll on this page — chat layout is self-contained */
-body { overflow: hidden !important; }
-/* ── Layout ── */
+/* ── iOS/Mobile keyboard fix: use position:fixed so layout hugs visual viewport ── */
+html, body { height: 100%; overflow: hidden; }
+
+/* Desktop layout */
 .chat-layout {
-  height: calc(100dvh - 56px);
+  position: fixed;
+  top: 56px; /* navbar height */
+  left: 0; right: 0; bottom: 0;
   display: flex;
   flex-direction: column;
   max-width: 860px;
   margin: 0 auto;
   overflow: hidden;
-  position: relative;
 }
-/* Fallback for browsers without dvh */
-@supports not (height: 100dvh) {
-  .chat-layout { height: calc(var(--vh, 1vh) * 100 - 56px); }
+/* Messages scrolls freely inside */
+.messages-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
-/* Compensate for sticky navbar height */
-body > main { display:flex; flex-direction:column; }
-@media (max-width: 480px) {
-  .chat-layout { height: calc(100dvh - 52px); }
-  @supports not (height: 100dvh) {
-    .chat-layout { height: calc(var(--vh, 1vh) * 100 - 52px); }
-  }
-}
+/* Input pinned at bottom of layout */
+.input-area { flex-shrink: 0; }
 
-/* ── Mobile: fix keyboard pushing layout ── */
-@media (max-width: 768px) {
-  /* Use fixed positioning for input to stay anchored at bottom */
-  body.chat-page {
-    height: 100%;
-    height: -webkit-fill-available;
-  }
-  .chat-layout {
-    /* Use height that accounts for visual viewport changes */
-    height: calc(var(--tg-viewport-height, 100dvh) - 52px);
-  }
-  /* Messages area must flex and scroll independently */
-  .messages-area {
-    flex: 1;
-    min-height: 0; /* Critical: allows flex child to shrink */
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-  }
-  /* Input area stays shrunk at bottom */
-  .input-area {
-    flex-shrink: 0;
-    position: relative;
-    z-index: 10;
-  }
+/* Mobile: navbar is 52px */
+@media (max-width: 480px) {
+  .chat-layout { top: 52px; }
 }
 
 @media (max-width:480px) {
@@ -673,29 +651,26 @@ async function pollMessages() {
 // Start polling every 1 second (near real-time fallback)
 setInterval(pollMessages, 1000);
 
-// ── Mobile keyboard: use visualViewport API for accurate height ───────────────
-function updateVH() {
-  // Use visualViewport if available (excludes keyboard on mobile)
-  const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-  document.documentElement.style.setProperty('--vh', `${h * 0.01}px`);
-  // Directly update chat-layout height to prevent keyboard from pushing input
-  const navbar = 52; // mobile navbar height
+// ── Mobile keyboard: adjust fixed layout so input stays above keyboard ────────
+// .chat-layout is position:fixed; top=navbar; bottom=0 by default.
+// When keyboard opens on iOS, visualViewport.height shrinks.
+// We push layout's bottom up by the keyboard height so nothing is hidden.
+function updateLayout() {
   const layout = document.querySelector('.chat-layout');
-  if (layout && window.innerWidth <= 768) {
-    layout.style.height = `${h - navbar}px`;
-  } else if (layout) {
-    layout.style.height = '';
+  if (!layout) return;
+  if (window.visualViewport) {
+    const keyboardHeight = window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop;
+    layout.style.bottom = Math.max(0, keyboardHeight) + 'px';
+  } else {
+    layout.style.bottom = '0px';
   }
-  // Always scroll to bottom after keyboard opens/closes
   scrollBottom();
 }
-updateVH();
 if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', updateVH);
-  window.visualViewport.addEventListener('scroll', updateVH);
-} else {
-  window.addEventListener('resize', updateVH);
+  window.visualViewport.addEventListener('resize', updateLayout);
+  window.visualViewport.addEventListener('scroll', updateLayout);
 }
+updateLayout();
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 syncButtons(); scrollBottom(); connect();
