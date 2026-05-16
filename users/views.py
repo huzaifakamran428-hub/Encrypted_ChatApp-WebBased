@@ -95,9 +95,16 @@ def send_email_otp_view(request):
                         background:#0f0f13;color:#e8e8f0;padding:40px 36px;
                         border-radius:16px;border:1px solid #2e2e42;">
                 <div style="text-align:center;margin-bottom:28px;">
-                    <span style="font-size:1.6rem;font-weight:800;color:#7c6af7;">
-                        &#128172; ChatApp
-                    </span>
+                    <div style="display:inline-flex;align-items:center;gap:10px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="38" height="38" style="display:inline-block;vertical-align:middle;">
+                            <circle cx="50" cy="50" r="50" fill="#7c6af7"/>
+                            <path d="M50 18 C30 18 15 31 15 47 C15 57 21 65.5 31 70.5 L28 82 L42 74.5 C44.5 75 47.2 75.2 50 75.2 C70 75.2 85 62.2 85 47 C85 31 70 18 50 18 Z" fill="white"/>
+                            <circle cx="35" cy="47" r="5" fill="#7c6af7"/>
+                            <circle cx="50" cy="47" r="5" fill="#7c6af7"/>
+                            <circle cx="65" cy="47" r="5" fill="#7c6af7"/>
+                        </svg>
+                        <span style="font-size:1.6rem;font-weight:800;color:#7c6af7;vertical-align:middle;">ChatApp</span>
+                    </div>
                 </div>
                 <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:6px;color:#e8e8f0;">
                     Verify your email address

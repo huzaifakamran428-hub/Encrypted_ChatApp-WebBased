@@ -20,6 +20,34 @@ body { overflow: hidden !important; }
     .chat-layout { height: calc(var(--vh, 1vh) * 100 - 52px); }
   }
 }
+
+/* ── Mobile: fix keyboard pushing layout ── */
+@media (max-width: 768px) {
+  body.chat-page {
+    height: 100%;
+    height: -webkit-fill-available;
+  }
+  .main-area {
+    flex: 1;
+    min-height: 0; /* Critical: allows flex child to shrink */
+    overflow: hidden;
+  }
+  .messages-area {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  .input-bar {
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+  }
+  /* Hide members panel on mobile by default */
+  .members-panel { display: none !important; }
+  .members-panel.open { display: flex !important; position: fixed; right: 0; top: 52px; bottom: 0; width: 80%; max-width: 260px; z-index: 100; box-shadow: var(--shadow); }
+}
 .chat-header { background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
 .back-btn { color: var(--text-secondary); text-decoration: none; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); transition: background 0.15s; }
 .back-btn:hover { background: var(--bg-secondary); }
@@ -30,8 +58,8 @@ body { overflow: hidden !important; }
 .header-sub { font-size: 0.75rem; color: var(--text-muted); }
 .members-toggle { background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-secondary); padding: 5px 10px; font-size: 0.8rem; cursor: pointer; transition: all 0.15s; }
 .members-toggle:hover { border-color: var(--accent); color: var(--accent); }
-.main-area { flex: 1; display: flex; overflow: hidden; }
-.messages-area { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; background: var(--bg-primary); }
+.main-area { flex: 1; display: flex; overflow: hidden; min-height: 0; }
+.messages-area { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; background: var(--bg-primary); min-height: 0; -webkit-overflow-scrolling: touch; }
 .members-panel { width: 220px; background: var(--bg-card); border-left: 1px solid var(--border); overflow-y: auto; display: none; flex-direction: column; }
 .members-panel.open { display: flex; }
 .members-panel-header { padding: 14px 16px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between; }
@@ -534,12 +562,26 @@ async function pollGroupMessages() {
 }
 setInterval(pollGroupMessages, 1000);
 
-// ── Mobile keyboard viewport fix ─────────────────────────────────────────────
+// ── Mobile keyboard: use visualViewport API for accurate height ───────────────
 function updateVH() {
-  document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
+  const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  document.documentElement.style.setProperty('--vh', `${h * 0.01}px`);
+  const navbar = 52;
+  const layout = document.querySelector('.chat-layout');
+  if (layout && window.innerWidth <= 768) {
+    layout.style.height = `${h - navbar}px`;
+  } else if (layout) {
+    layout.style.height = '';
+  }
+  scrollBottom();
 }
 updateVH();
-window.addEventListener('resize', updateVH);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', updateVH);
+  window.visualViewport.addEventListener('scroll', updateVH);
+} else {
+  window.addEventListener('resize', updateVH);
+}
 
 scrollBottom(); connect();
 </script>
