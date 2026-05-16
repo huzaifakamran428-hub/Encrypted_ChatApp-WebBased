@@ -75,21 +75,20 @@ CHANNEL_LAYERS = {
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": os.environ.get("DB_NAME", "chatapp_db"),
+        "NAME": os.environ.get("DB_NAME", "railway"),
         "USER": os.environ.get("DB_USER", "root"),
         "PASSWORD": os.environ.get("DB_PASSWORD", "root"),
         "HOST": os.environ.get("DB_HOST", "localhost"),
         "PORT": os.environ.get("DB_PORT", "3306"),
-        "CONN_MAX_AGE": 60,          # ← add this
-        "CONN_HEALTH_CHECKS": True,  # ← add this
+        "CONN_MAX_AGE": 60,  # ← reuse connections for 60s
+        "CONN_HEALTH_CHECKS": True,  # ← test connection before reuse
         "OPTIONS": {
             "charset": "utf8mb4",
             "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
-             "connect_timeout": 10,   # ← add this
+            "connect_timeout": 10,
         },
     }
 }
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
@@ -98,9 +97,6 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
-
-
-
 
 
 LANGUAGE_CODE = "en-us"
@@ -131,18 +127,18 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8000",
 ]
 
-# ── Email Settings (for OTP verification) ──────────────────────────────────
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "huzaifakamran428@gmail.com")
-EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "gjrccpwssfvizvax")
+# ── Email Settings ──────────────────────────────────────────────────────────
+EMAIL_BACKEND = "anymail.backends.resend.EmailBackend"
+
+ANYMAIL = {
+    "RESEND_API_KEY": os.environ.get("RESEND_API_KEY"),
+}
+
 DEFAULT_FROM_EMAIL = os.environ.get(
-    "DEFAULT_FROM_EMAIL", "ChatApp <huzaifakamran428@gmail.com>"
+    "DEFAULT_FROM_EMAIL",
+    "ChatApp <onboarding@resend.dev>",  # use resend's default until you add a domain
 )
 
-# OTP expiry in minutes
 OTP_EXPIRY_MINUTES = 10
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024 * 1024  # 5 GB
