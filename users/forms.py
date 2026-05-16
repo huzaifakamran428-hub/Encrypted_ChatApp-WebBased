@@ -9,7 +9,7 @@ class RegisterForm(UserCreationForm):
         widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email address'})
     )
     username = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Username'})
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Username', 'autocomplete': 'off'})
     )
     password1 = forms.CharField(
         label='Password',
@@ -23,6 +23,14 @@ class RegisterForm(UserCreationForm):
     class Meta:
         model = CustomUser
         fields = ['username', 'email', 'password1', 'password2']
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username', '')
+        if ' ' in username:
+            raise forms.ValidationError('Username cannot contain spaces.')
+        if CustomUser.objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError('This username is already taken.')
+        return username
 
     def clean_email(self):
         email = self.cleaned_data.get('email')

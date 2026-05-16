@@ -101,6 +101,7 @@
       <div class="form-group">
         <label class="form-label" for="{{ form.username.id_for_label }}">Username</label>
         {{ form.username }}
+        <div id="username-feedback" style="font-size:0.8rem; margin-top:5px; min-height:18px; display:flex; align-items:center; gap:5px;"></div>
         {% if form.username.errors %}
           <div class="form-errors">{{ form.username.errors|join:", " }}</div>
         {% endif %}
@@ -308,6 +309,57 @@ function setMsg(text, type) {
     otpMsg.textContent = text;
     otpMsg.className   = type === 'ok' ? 'ok' : type === 'err' ? 'err' : '';
 }
+
+// ── Username live validation ───────────────────────────────────────────────────
+const usernameInput   = document.getElementById('{{ form.username.id_for_label }}');
+const usernameFeedback = document.getElementById('username-feedback');
+const CHECK_URL       = "{% url 'users:check_username' %}";
+let usernameTimer     = null;
+let usernameOk        = false;
+
+function setUsernameFeedback(msg, type) {
+    // type: 'ok' | 'err' | 'checking' | ''
+    const colors = { ok: 'var(--success)', err: 'var(--danger)', checking: 'var(--text-muted)', '': 'transparent' };
+    const icons  = { ok: 'fa-check-circle', err: 'fa-times-circle', checking: 'fa-spinner fa-spin', '': '' };
+    usernameFeedback.innerHTML = msg
+        ? `<i class="fas ${icons[type]}" style="color:${colors[type]};font-size:0.82rem;"></i>
+           <span style="color:${colors[type]};">${msg}</span>`
+        : '';
+}
+
+// Block spaces in real time
+usernameInput.addEventListener('keydown', function(e) {
+    if (e.key === ' ') { e.preventDefault(); setUsernameFeedback('Spaces are not allowed in usernames.', 'err'); }
+});
+usernameInput.addEventListener('input', function() {
+    // Strip any spaces that may have been pasted
+    if (this.value.includes(' ')) {
+        this.value = this.value.replace(/ /g, '');
+        setUsernameFeedback('Spaces are not allowed in usernames.', 'err');
+        return;
+    }
+    const val = this.value.trim();
+    usernameOk = false;
+    clearTimeout(usernameTimer);
+    if (!val) { setUsernameFeedback('', ''); return; }
+    if (val.length < 3) { setUsernameFeedback('Must be at least 3 characters.', 'err'); return; }
+    setUsernameFeedback('Checking…', 'checking');
+    usernameTimer = setTimeout(async () => {
+        try {
+            const res  = await fetch(`${CHECK_URL}?username=${encodeURIComponent(val)}`);
+            const data = await res.json();
+            if (data.available) {
+                usernameOk = true;
+                setUsernameFeedback(data.message, 'ok');
+            } else {
+                usernameOk = false;
+                setUsernameFeedback(data.error, 'err');
+            }
+        } catch(e) {
+            setUsernameFeedback('', '');
+        }
+    }, 450); // debounce 450ms
+});
 
 // ── Submit guard (safety net — button is hidden until verified anyway) ─────────
 document.getElementById('register-form').addEventListener('submit', function (e) {

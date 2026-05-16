@@ -1,5 +1,6 @@
 import random
 import string
+import re
 from datetime import timedelta
 
 from django.shortcuts import render, redirect
@@ -10,9 +11,29 @@ from django.core.mail import send_mail
 from django.conf import settings as django_settings
 from django.utils import timezone
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
 
 from .forms import RegisterForm, LoginForm, AvatarForm
+from .models import CustomUser
+
+
+@require_GET
+def check_username_view(request):
+    """AJAX — check if a username is available and valid."""
+    username = request.GET.get('username', '').strip()
+    if not username:
+        return JsonResponse({'available': False, 'error': 'Username is required.'})
+    if ' ' in username:
+        return JsonResponse({'available': False, 'error': 'Username cannot contain spaces.'})
+    if len(username) < 3:
+        return JsonResponse({'available': False, 'error': 'Username must be at least 3 characters.'})
+    if len(username) > 30:
+        return JsonResponse({'available': False, 'error': 'Username cannot exceed 30 characters.'})
+    if not re.match(r'^[\w.@+-]+$', username):
+        return JsonResponse({'available': False, 'error': 'Only letters, numbers, and @/./+/-/_ allowed.'})
+    if CustomUser.objects.filter(username__iexact=username).exists():
+        return JsonResponse({'available': False, 'error': 'This username is already taken.'})
+    return JsonResponse({'available': True, 'message': 'Username is available!'})
 from .models import CustomUser
 
 
