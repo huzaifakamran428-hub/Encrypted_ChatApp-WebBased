@@ -136,7 +136,7 @@ ANYMAIL = {
     ),
 }
 
-DEFAULT_FROM_EMAIL = "ChatApp <onboarding@resend.dev>"
+DEFAULT_FROM_EMAIL = "ChatApp <noreply@huzaifakamran.site>"
 
 EMAIL_TIMEOUT = 10
 OTP_EXPIRY_MINUTES = 10
