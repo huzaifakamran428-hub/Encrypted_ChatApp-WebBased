@@ -38,6 +38,11 @@ def format_size(b):
     return f'{b/1073741824:.2f} GB'
 
 
+def _is_admin_user(user):
+    """Returns True if the user is a superuser or staff (limited admin)."""
+    return user.is_superuser or user.is_staff
+
+
 @login_required
 def home_view(request):
     sent_to       = Message.objects.filter(sender=request.user).values_list('receiver', flat=True)
@@ -50,8 +55,8 @@ def home_view(request):
             other = User.objects.get(pk=uid)
         except User.DoesNotExist:
             continue
-        # Hide admin conversations from non-admin users; skip ghost 'None' account
-        if other.is_superuser and not request.user.is_superuser:
+        # FIX: Hide admin/staff conversations from regular users
+        if _is_admin_user(other) and not _is_admin_user(request.user):
             continue
         if other.username == 'None':
             continue
@@ -64,11 +69,16 @@ def home_view(request):
 
     conversations.sort(
         key=lambda x: x['last_message'].timestamp if x['last_message'] else 0, reverse=True)
-    # Exclude superusers from People sidebar for non-admin users
-    if request.user.is_superuser:
+
+    # People sidebar: hide admin/staff users from regular users
+    if _is_admin_user(request.user):
         all_users = User.objects.exclude(pk=request.user.pk).exclude(pk__in=chatted_ids).exclude(username='None')
     else:
-        all_users = User.objects.exclude(pk=request.user.pk).exclude(pk__in=chatted_ids).exclude(is_superuser=True).exclude(username='None')
+        all_users = (User.objects.exclude(pk=request.user.pk)
+                                 .exclude(pk__in=chatted_ids)
+                                 .exclude(is_superuser=True)
+                                 .exclude(is_staff=True)
+                                 .exclude(username='None'))
     user_groups = request.user.group_memberships.all().order_by('-created_at')
 
     return render(request, 'chat/home.html', {
@@ -84,7 +94,7 @@ def chat_room_view(request, username):
     if other_user == request.user:
         return redirect('chat:home')
     # Non-admin users cannot open a chat with an admin/superuser
-    if other_user.is_superuser and not request.user.is_superuser:
+    if _is_admin_user(other_user) and not _is_admin_user(request.user):
         from django.contrib import messages as dj_msg
         dj_msg.error(request, 'This user is not available for direct messaging.')
         return redirect('chat:home')
@@ -106,8 +116,8 @@ def search_users_view(request):
     results = []
     if query:
         results = User.objects.filter(username__icontains=query).exclude(pk=request.user.pk)
-        if not request.user.is_superuser:
-            results = results.exclude(is_superuser=True)
+        if not _is_admin_user(request.user):
+            results = results.exclude(is_superuser=True).exclude(is_staff=True)
     return render(request, 'chat/search.html', {'results': results, 'query': query})
 
 
@@ -115,10 +125,10 @@ def search_users_view(request):
 
 @login_required
 def create_group_view(request):
-    if request.user.is_superuser:
+    if _is_admin_user(request.user):
         all_users = User.objects.exclude(pk=request.user.pk)
     else:
-        all_users = User.objects.exclude(pk=request.user.pk).exclude(is_superuser=True)
+        all_users = User.objects.exclude(pk=request.user.pk).exclude(is_superuser=True).exclude(is_staff=True)
     if request.method == 'POST':
         name       = request.POST.get('name', '').strip()
         desc       = request.POST.get('description', '').strip()
@@ -330,8 +340,25 @@ def admin_dashboard_view(request):
             'file_type': msg.file_type,
         })
 
-    # Show ALL users (including those without email). Ghost 'None' user filtered in template.
-    all_users = User.objects.all().values('username', 'email', 'is_active', 'date_joined').order_by('-date_joined')
+    # All users with role info
+    all_users_qs = User.objects.all().order_by('-date_joined')
+    all_users = []
+    for u in all_users_qs:
+        if u.is_superuser:
+            role = 'superadmin'
+        elif u.is_staff:
+            role = 'admin'
+        else:
+            role = 'user'
+        all_users.append({
+            'username':    u.username,
+            'email':       u.email,
+            'is_active':   u.is_active,
+            'date_joined': u.date_joined,
+            'role':        role,
+            'is_superuser': u.is_superuser,
+            'is_staff':    u.is_staff,
+        })
 
     ctx = {
         'total_users':     total_users,
@@ -509,13 +536,13 @@ def admin_search_view(request):
 @_admin_required
 @require_POST
 def admin_add_user_view(request):
-    """Admin: create a new user."""
-    import json as _json
+    """Admin: create a new user with optional role."""
     try:
-        data     = _json.loads(request.body)
+        data     = json.loads(request.body)
         username = data.get('username', '').strip()
         email    = data.get('email', '').strip()
         password = data.get('password', '').strip()
+        role     = data.get('role', 'user')  # 'user', 'admin', 'superadmin'
         if not username or not password:
             return JsonResponse({'error': 'Username and password are required.'}, status=400)
         if User.objects.filter(username=username).exists():
@@ -523,8 +550,18 @@ def admin_add_user_view(request):
         if email and User.objects.filter(email=email).exists():
             return JsonResponse({'error': f'Email "{email}" already in use.'}, status=400)
         user = User.objects.create_user(username=username, email=email, password=password)
-        return JsonResponse({'ok': True, 'username': user.username, 'email': user.email,
-                             'date_joined': timezone.localtime(user.date_joined).strftime('%Y-%m-%d %H:%M')})
+        if role == 'superadmin':
+            user.is_superuser = True
+            user.is_staff = True
+            user.save(update_fields=['is_superuser', 'is_staff'])
+        elif role == 'admin':
+            user.is_staff = True
+            user.save(update_fields=['is_staff'])
+        return JsonResponse({
+            'ok': True, 'username': user.username, 'email': user.email,
+            'role': role,
+            'date_joined': timezone.localtime(user.date_joined).strftime('%Y-%m-%d %H:%M'),
+        })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
@@ -554,6 +591,48 @@ def admin_toggle_user_view(request, username):
         user.is_active = not user.is_active
         user.save(update_fields=['is_active'])
         return JsonResponse({'ok': True, 'is_active': user.is_active})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@_admin_required
+@require_POST
+def admin_reset_password_view(request, username):
+    """Admin: reset a user's password."""
+    try:
+        data = json.loads(request.body)
+        new_password = data.get('password', '').strip()
+        if not new_password or len(new_password) < 6:
+            return JsonResponse({'error': 'Password must be at least 6 characters.'}, status=400)
+        user = get_object_or_404(User, username=username)
+        user.set_password(new_password)
+        user.save()
+        return JsonResponse({'ok': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@_admin_required
+@require_POST
+def admin_set_role_view(request, username):
+    """Admin: set user role — superadmin / admin / user."""
+    try:
+        data = json.loads(request.body)
+        role = data.get('role', 'user')
+        user = get_object_or_404(User, username=username)
+        if user == request.user:
+            return JsonResponse({'error': 'You cannot change your own role.'}, status=400)
+        if role == 'superadmin':
+            user.is_superuser = True
+            user.is_staff = True
+        elif role == 'admin':
+            user.is_superuser = False
+            user.is_staff = True
+        else:  # 'user'
+            user.is_superuser = False
+            user.is_staff = False
+        user.save(update_fields=['is_superuser', 'is_staff'])
+        return JsonResponse({'ok': True, 'role': role})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
@@ -630,7 +709,8 @@ def poll_conversations_view(request):
             other = User.objects.get(pk=uid)
         except User.DoesNotExist:
             continue
-        if other.is_superuser and not request.user.is_superuser:
+        # FIX: Hide admin/staff conversations from regular users
+        if _is_admin_user(other) and not _is_admin_user(request.user):
             continue
         last = Message.objects.filter(
             Q(sender=request.user, receiver=other) |
@@ -673,7 +753,6 @@ def poll_new_messages_view(request, username):
     """
     Polling fallback for real-time messages.
     Returns all messages between current user and `username` with id > since_id.
-    Used when WebSocket broadcast fails (e.g. Cloudflare tunnel / InMemoryChannelLayer).
     """
     since_id = int(request.GET.get('since', 0))
     other_user = get_object_or_404(User, username=username)

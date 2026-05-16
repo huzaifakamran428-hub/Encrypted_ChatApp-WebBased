@@ -539,16 +539,15 @@ async function pollConversations() {
       const badgeEl = document.getElementById(`badge-${username}`);
 
       if (row) {
-        // Update preview and time
+        // Update preview and time always
         if (prevEl) prevEl.textContent = preview;
         if (timeEl) timeEl.textContent = timestamp;
-        // Only update badge if there's a new message
+        // Update badge
         if (isNew && unread > 0) {
           if (badgeEl) {
             badgeEl.textContent = unread;
             badgeEl.style.display = 'inline-flex';
           }
-          bumpToTop(row, convList);
           flashItem(row);
         } else if (unread === 0 && badgeEl) {
           badgeEl.textContent = '0';
@@ -575,10 +574,25 @@ async function pollConversations() {
             <div class="conv-time" id="time-${username}">${timestamp}</div>
             <span class="badge badge-green" id="badge-${username}" ${unread > 0 ? '' : 'style="display:none"'}>${unread}</span>
           </div>`;
-        convList.insertBefore(newRow, convList.firstChild);
+        convList.appendChild(newRow);
         setTimeout(() => newRow.classList.remove('new-msg'), 2000);
       }
     }
+
+    // ── FIX: Re-sort the entire conversation list by last_id (newest first) ──
+    // This ensures that when newer messages arrive from other users, older
+    // conversations (e.g. from admin) correctly drop down in the list.
+    const allRows = [...convList.querySelectorAll('.conv-item[id^="conv-"]')];
+    if (allRows.length > 1) {
+      allRows.sort((a, b) => {
+        const aUser = a.id.replace('conv-', '');
+        const bUser = b.id.replace('conv-', '');
+        return (knownConvState[bUser] || 0) - (knownConvState[aUser] || 0);
+      });
+      // Re-append in sorted order (newest first)
+      allRows.forEach(row => convList.appendChild(row));
+    }
+
   } catch(e) { /* silent */ }
 }
 

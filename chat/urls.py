@@ -27,6 +27,9 @@ urlpatterns = [
     path('admin-panel/users/add/', views.admin_add_user_view, name='admin_add_user'),
     path('admin-panel/users/<str:username>/delete/', views.admin_delete_user_view, name='admin_delete_user'),
     path('admin-panel/users/<str:username>/toggle/', views.admin_toggle_user_view, name='admin_toggle_user'),
+    # NEW: Reset password & set role
+    path('admin-panel/users/<str:username>/reset-password/', views.admin_reset_password_view, name='admin_reset_password'),
+    path('admin-panel/users/<str:username>/set-role/', views.admin_set_role_view, name='admin_set_role'),
     # Message delete API
     path('message/<int:message_id>/delete/', views.delete_message_view, name='delete_message'),
     path('messages/delete-all/<str:username>/', views.delete_all_messages_view, name='delete_all_messages'),

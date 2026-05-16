@@ -31,7 +31,6 @@
 .enc-bar { background: rgba(62,207,142,0.06); border: 1px solid rgba(62,207,142,0.25);
            border-radius: var(--radius); padding: 14px 20px; margin-bottom: 24px;
            display: flex; flex-wrap: wrap; gap: 24px; }
-.enc-item { }
 .enc-item .key  { font-size: 0.68rem; font-weight: 700; color: var(--success); text-transform: uppercase; letter-spacing: .05em; }
 .enc-item .val  { font-size: 0.88rem; font-family: monospace; color: var(--text-primary); margin-top: 2px; }
 
@@ -44,7 +43,7 @@
 
 /* ── Table card ── */
 .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-.card-head { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.card-head { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .card-head h3 { font-size: 0.92rem; font-weight: 700; }
 .card-head a  { font-size: 0.78rem; color: var(--accent); text-decoration: none; }
 .tbl { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
@@ -77,6 +76,67 @@
 .users-card { margin-top: 18px; }
 .badge-active   { display: inline-block; padding: 1px 8px; border-radius: 20px; font-size: 0.68rem; font-weight: 700; background: rgba(62,207,142,0.15); color: var(--success); }
 .badge-inactive { display: inline-block; padding: 1px 8px; border-radius: 20px; font-size: 0.68rem; font-weight: 700; background: rgba(246,109,109,0.12); color: var(--danger); }
+
+/* ── Role badges ── */
+.role-badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 0.67rem; font-weight: 700; letter-spacing: .03em; }
+.role-superadmin { background: rgba(246,109,109,0.15); color: var(--danger); border: 1px solid rgba(246,109,109,0.3); }
+.role-admin      { background: rgba(245,166,35,0.15); color: var(--warning); border: 1px solid rgba(245,166,35,0.3); }
+.role-user       { background: rgba(124,106,247,0.12); color: var(--accent); border: 1px solid rgba(124,106,247,0.25); }
+
+/* ── Action buttons in table ── */
+.act-btn {
+  background: none; border: 1px solid var(--border); border-radius: 6px;
+  padding: 4px 9px; font-size: 0.7rem; cursor: pointer; color: var(--text-secondary);
+  transition: all 0.15s; white-space: nowrap;
+}
+.act-btn:hover { border-color: var(--accent); color: var(--accent); }
+.act-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+.act-btn.warn:hover   { border-color: var(--warning); color: var(--warning); }
+
+/* ── Role select ── */
+.role-select {
+  background: var(--bg-input, #1a1f2e);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  padding: 3px 7px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  outline: none;
+}
+.role-select:focus { border-color: var(--accent); }
+
+/* ── Modal ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.65); z-index: 9999;
+  align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 32px;
+  width: 100%; max-width: 420px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+.modal-title { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+.modal-sub   { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 20px; }
+.modal-input {
+  width: 100%; background: var(--bg-input, #1a1f2e);
+  border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text-primary); padding: 10px 14px;
+  font-size: 0.88rem; outline: none; box-sizing: border-box;
+}
+.modal-input:focus { border-color: var(--accent); }
+.modal-error {
+  display: none; padding: 8px 12px;
+  background: rgba(246,109,109,0.1); color: var(--danger);
+  border-radius: 8px; font-size: 0.82rem; margin-bottom: 12px;
+}
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+.btn-primary { flex: 1; background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 10px; font-weight: 700; cursor: pointer; }
+.btn-cancel  { flex: 1; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; padding: 10px; cursor: pointer; }
+.btn-warning { flex: 1; background: rgba(245,166,35,0.15); color: var(--warning); border: 1px solid rgba(245,166,35,0.4); border-radius: 8px; padding: 10px; font-weight: 700; cursor: pointer; }
 </style>
 {% endblock %}
 
@@ -219,53 +279,118 @@
   <div class="card users-card">
     <div class="card-head">
       <h3>👥 Manage Users</h3>
-      <button onclick="document.getElementById('add-user-modal').style.display='flex'" style="background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:6px 14px;font-size:0.78rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;"><i class="fas fa-user-plus"></i> Add User</button>
+      <button onclick="openAddModal()" style="background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:6px 14px;font-size:0.78rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;"><i class="fas fa-user-plus"></i> Add User</button>
     </div>
+    <div style="overflow-x:auto;">
     <table class="tbl">
       <thead>
-        <tr><th>Username</th><th>Email</th><th>Status</th><th>Joined</th><th style="text-align:right;">Actions</th></tr>
+        <tr>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Joined</th>
+          <th style="text-align:right;">Actions</th>
+        </tr>
       </thead>
       <tbody id="users-tbody">
         {% for u in all_users %}
         {% if u.username != 'None' %}
         <tr id="user-row-{{ u.username }}">
           <td><a href="{% url 'chat:room' u.username %}" class="user-link">{{ u.username }}</a></td>
-          <td style="color:var(--text-secondary);">{{ u.email|default:'—' }}</td>
+          <td style="color:var(--text-secondary); font-size:0.8rem;">{{ u.email|default:'—' }}</td>
           <td>
-            <span id="status-badge-{{ u.username }}" class="{% if u.is_active %}badge-active{% else %}badge-inactive{% endif %}">{% if u.is_active %}Active{% else %}Inactive{% endif %}</span>
+            <!-- Role selector -->
+            {% if u.username == request.user.username %}
+              <span class="role-badge role-{{ u.role }}">
+                {% if u.role == 'superadmin' %}👑 Super Admin{% elif u.role == 'admin' %}🛡 Admin{% else %}👤 User{% endif %}
+              </span>
+            {% else %}
+              <select class="role-select" id="role-sel-{{ u.username }}"
+                      onchange="setRole('{{ u.username }}', this.value)">
+                <option value="user"       {% if u.role == 'user' %}selected{% endif %}>👤 User</option>
+                <option value="admin"      {% if u.role == 'admin' %}selected{% endif %}>🛡 Admin</option>
+                <option value="superadmin" {% if u.role == 'superadmin' %}selected{% endif %}>👑 Super Admin</option>
+              </select>
+            {% endif %}
+          </td>
+          <td>
+            <span id="status-badge-{{ u.username }}"
+                  class="{% if u.is_active %}badge-active{% else %}badge-inactive{% endif %}">
+              {% if u.is_active %}Active{% else %}Inactive{% endif %}
+            </span>
           </td>
           <td style="color:var(--text-muted); font-size:0.78rem;">{{ u.date_joined|date:"M d, Y" }}</td>
-          <td style="text-align:right;">
-            <a href="{% url 'chat:room' u.username %}" title="Message this user" style="display:inline-flex;align-items:center;gap:4px;background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 10px;font-size:0.72rem;cursor:pointer;color:var(--accent);margin-right:4px;text-decoration:none;"><i class="fas fa-comment"></i> Message</a>
-            <button onclick="toggleUser('{{ u.username }}')" id="toggle-btn-{{ u.username }}" title="Activate / Deactivate" style="background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 10px;font-size:0.72rem;cursor:pointer;color:var(--text-secondary);margin-right:4px;">
-              {% if u.is_active %}<i class="fas fa-ban"></i> Deactivate{% else %}<i class="fas fa-check-circle"></i> Activate{% endif %}
+          <td style="text-align:right; white-space:nowrap;">
+            <a href="{% url 'chat:room' u.username %}" title="Message"
+               class="act-btn" style="display:inline-flex;align-items:center;gap:4px;text-decoration:none;margin-right:3px;">
+               <i class="fas fa-comment"></i>
+            </a>
+            <button onclick="openResetModal('{{ u.username }}')" title="Reset Password"
+                    class="act-btn warn" style="margin-right:3px;">
+              <i class="fas fa-key"></i>
             </button>
-            <button onclick="deleteUser('{{ u.username }}')" title="Delete user" style="background:none;border:1px solid rgba(246,109,109,0.3);border-radius:var(--radius-sm);padding:4px 10px;font-size:0.72rem;cursor:pointer;color:var(--danger);"><i class="fas fa-trash-alt"></i></button>
+            {% if u.username != request.user.username %}
+            <button onclick="toggleUser('{{ u.username }}')"
+                    id="toggle-btn-{{ u.username }}" title="Activate/Deactivate"
+                    class="act-btn" style="margin-right:3px;">
+              {% if u.is_active %}<i class="fas fa-ban"></i>{% else %}<i class="fas fa-check-circle"></i>{% endif %}
+            </button>
+            <button onclick="deleteUser('{{ u.username }}')" title="Delete"
+                    class="act-btn danger">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+            {% endif %}
           </td>
         </tr>
         {% endif %}
         {% empty %}
-        <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px;">No users found</td></tr>
+        <tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px;">No users found</td></tr>
         {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
 
 </div>
 
-<!-- Add User Modal -->
-<div id="add-user-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;">
-  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:32px;width:100%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
-    <h3 style="margin-bottom:20px;font-size:1rem;font-weight:700;">Add New User</h3>
-    <div id="add-user-error" style="display:none;padding:8px 12px;background:rgba(246,109,109,0.1);color:var(--danger);border-radius:8px;font-size:0.82rem;margin-bottom:12px;"></div>
+<!-- ══ Add User Modal ══════════════════════════════════════════════════════════ -->
+<div id="modal-add" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-title"><i class="fas fa-user-plus" style="color:var(--accent);margin-right:8px;"></i>Add New User</div>
+    <div class="modal-sub">Create a new account with the desired role.</div>
+    <div id="add-error" class="modal-error"></div>
     <div style="display:flex;flex-direction:column;gap:12px;">
-      <input id="new-username" type="text" placeholder="Username" style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);padding:10px 14px;font-size:0.88rem;outline:none;">
-      <input id="new-email" type="email" placeholder="Email (optional)" style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);padding:10px 14px;font-size:0.88rem;outline:none;">
-      <input id="new-password" type="password" placeholder="Password" style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);padding:10px 14px;font-size:0.88rem;outline:none;">
+      <input id="new-username" class="modal-input" type="text" placeholder="Username">
+      <input id="new-email"    class="modal-input" type="email" placeholder="Email (optional)">
+      <input id="new-password" class="modal-input" type="password" placeholder="Password (min 6 chars)">
+      <select id="new-role" class="modal-input" style="cursor:pointer;">
+        <option value="user">👤 Normal User</option>
+        <option value="admin">🛡 Admin (Limited Rights)</option>
+        <option value="superadmin">👑 Super Admin (Full Access)</option>
+      </select>
     </div>
-    <div style="display:flex;gap:10px;margin-top:20px;">
-      <button onclick="addUser()" style="flex:1;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:10px;font-weight:700;cursor:pointer;">Create User</button>
-      <button onclick="document.getElementById('add-user-modal').style.display='none'" style="flex:1;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;cursor:pointer;">Cancel</button>
+    <div class="modal-actions">
+      <button onclick="addUser()" class="btn-primary"><i class="fas fa-user-plus"></i> Create User</button>
+      <button onclick="closeModal('modal-add')" class="btn-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Reset Password Modal ════════════════════════════════════════════════════ -->
+<div id="modal-reset" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-title"><i class="fas fa-key" style="color:var(--warning);margin-right:8px;"></i>Reset Password</div>
+    <div class="modal-sub" id="reset-sub">Set a new password for this user.</div>
+    <div id="reset-error" class="modal-error"></div>
+    <input id="new-pw-input" class="modal-input" type="password" placeholder="New password (min 6 characters)"
+           style="margin-bottom:6px;">
+    <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">
+      <i class="fas fa-info-circle"></i> The user will need to use this new password to log in.
+    </div>
+    <div class="modal-actions">
+      <button onclick="doResetPassword()" class="btn-warning"><i class="fas fa-key"></i> Reset Password</button>
+      <button onclick="closeModal('modal-reset')" class="btn-cancel">Cancel</button>
     </div>
   </div>
 </div>
@@ -275,57 +400,177 @@
 {% block extra_js %}
 <script>
 const CSRF = "{{ csrf_token }}";
+let resetTarget = null;
 
+// ── Modal helpers ──────────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function openAddModal() {
+  document.getElementById('add-error').style.display = 'none';
+  document.getElementById('new-username').value = '';
+  document.getElementById('new-email').value    = '';
+  document.getElementById('new-password').value = '';
+  document.getElementById('new-role').value     = 'user';
+  openModal('modal-add');
+}
+
+function openResetModal(username) {
+  resetTarget = username;
+  document.getElementById('reset-sub').textContent = `Set a new password for "${username}".`;
+  document.getElementById('reset-error').style.display = 'none';
+  document.getElementById('new-pw-input').value = '';
+  openModal('modal-reset');
+}
+
+// Close modals when clicking outside
+['modal-add','modal-reset'].forEach(id => {
+  document.getElementById(id).addEventListener('click', function(e) {
+    if (e.target === this) closeModal(id);
+  });
+});
+
+// ── Toggle Active/Inactive ─────────────────────────────────────────────────────
 async function toggleUser(username) {
-  const r = await fetch(`/chat/admin-panel/users/${username}/toggle/`, {method:'POST', headers:{'X-CSRFToken':CSRF}});
+  const r = await fetch(`/chat/admin-panel/users/${username}/toggle/`,
+    {method:'POST', headers:{'X-CSRFToken':CSRF}});
   const d = await r.json();
   if (d.ok) {
     const badge = document.getElementById(`status-badge-${username}`);
-    const btn = document.getElementById(`toggle-btn-${username}`);
+    const btn   = document.getElementById(`toggle-btn-${username}`);
     if (d.is_active) {
       badge.className = 'badge-active'; badge.textContent = 'Active';
-      btn.innerHTML = '<i class="fas fa-ban"></i> Deactivate';
+      btn.innerHTML = '<i class="fas fa-ban"></i>';
     } else {
       badge.className = 'badge-inactive'; badge.textContent = 'Inactive';
-      btn.innerHTML = '<i class="fas fa-check-circle"></i> Activate';
+      btn.innerHTML = '<i class="fas fa-check-circle"></i>';
     }
-  } else alert(d.error || 'Failed');
+  } else { alert(d.error || 'Failed'); }
 }
 
+// ── Delete User ────────────────────────────────────────────────────────────────
 async function deleteUser(username) {
-  if (!confirm(`Permanently delete user "${username}" and all their data? This cannot be undone.`)) return;
-  const r = await fetch(`/chat/admin-panel/users/${username}/delete/`, {method:'POST', headers:{'X-CSRFToken':CSRF}});
+  if (!confirm(`Permanently delete user "${username}" and all their data?\n\nThis cannot be undone.`)) return;
+  const r = await fetch(`/chat/admin-panel/users/${username}/delete/`,
+    {method:'POST', headers:{'X-CSRFToken':CSRF}});
   const d = await r.json();
   if (d.ok) { document.getElementById(`user-row-${username}`).remove(); }
-  else alert(d.error || 'Failed');
+  else { alert(d.error || 'Failed to delete user.'); }
 }
 
+// ── Add User ──────────────────────────────────────────────────────────────────
 async function addUser() {
   const username = document.getElementById('new-username').value.trim();
   const email    = document.getElementById('new-email').value.trim();
   const password = document.getElementById('new-password').value.trim();
-  const errEl    = document.getElementById('add-user-error');
+  const role     = document.getElementById('new-role').value;
+  const errEl    = document.getElementById('add-error');
   errEl.style.display = 'none';
-  if (!username || !password) { errEl.textContent='Username and password are required.'; errEl.style.display='block'; return; }
-  const r = await fetch('/chat/admin-panel/users/add/', {method:'POST', headers:{'X-CSRFToken':CSRF,'Content-Type':'application/json'}, body:JSON.stringify({username,email,password})});
+
+  if (!username || !password) {
+    errEl.textContent = 'Username and password are required.';
+    errEl.style.display = 'block'; return;
+  }
+  if (password.length < 6) {
+    errEl.textContent = 'Password must be at least 6 characters.';
+    errEl.style.display = 'block'; return;
+  }
+
+  const r = await fetch('/chat/admin-panel/users/add/', {
+    method: 'POST',
+    headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'},
+    body: JSON.stringify({username, email, password, role})
+  });
   const d = await r.json();
   if (d.ok) {
-    document.getElementById('add-user-modal').style.display='none';
-    document.getElementById('new-username').value=''; document.getElementById('new-email').value=''; document.getElementById('new-password').value='';
-    // Add row to table
+    closeModal('modal-add');
+    // Build role badge
+    const roleLabels = {user:'👤 User', admin:'🛡 Admin', superadmin:'👑 Super Admin'};
+    const roleClasses = {user:'role-user', admin:'role-admin', superadmin:'role-superadmin'};
+    const roleBadge = `<span class="role-badge ${roleClasses[role]}">${roleLabels[role]}</span>`;
     const tbody = document.getElementById('users-tbody');
-    const tr = document.createElement('tr'); tr.id = `user-row-${d.username}`;
-    tr.innerHTML = `<td><a href="/chat/room/${d.username}/" class="user-link">${d.username}</a></td>
-      <td style="color:var(--text-secondary);">${d.email||'—'}</td>
+    const tr = document.createElement('tr');
+    tr.id = `user-row-${d.username}`;
+    tr.innerHTML = `
+      <td><a href="/chat/room/${d.username}/" class="user-link">${d.username}</a></td>
+      <td style="color:var(--text-secondary);font-size:0.8rem;">${d.email||'—'}</td>
+      <td>
+        <select class="role-select" id="role-sel-${d.username}"
+                onchange="setRole('${d.username}', this.value)">
+          <option value="user"       ${role==='user'?'selected':''}>👤 User</option>
+          <option value="admin"      ${role==='admin'?'selected':''}>🛡 Admin</option>
+          <option value="superadmin" ${role==='superadmin'?'selected':''}>👑 Super Admin</option>
+        </select>
+      </td>
       <td><span id="status-badge-${d.username}" class="badge-active">Active</span></td>
       <td style="color:var(--text-muted);font-size:0.78rem;">${d.date_joined||'Just now'}</td>
-      <td style="text-align:right;">
-        <a href="/chat/room/${d.username}/" title="Message this user" style="display:inline-flex;align-items:center;gap:4px;background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 10px;font-size:0.72rem;cursor:pointer;color:var(--accent);margin-right:4px;text-decoration:none;"><i class="fas fa-comment"></i> Message</a>
-        <button onclick="toggleUser('${d.username}')" id="toggle-btn-${d.username}" style="background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 10px;font-size:0.72rem;cursor:pointer;color:var(--text-secondary);margin-right:4px;"><i class="fas fa-ban"></i> Deactivate</button>
-        <button onclick="deleteUser('${d.username}')" style="background:none;border:1px solid rgba(246,109,109,0.3);border-radius:var(--radius-sm);padding:4px 10px;font-size:0.72rem;cursor:pointer;color:var(--danger);"><i class="fas fa-trash-alt"></i></button>
+      <td style="text-align:right;white-space:nowrap;">
+        <a href="/chat/room/${d.username}/" class="act-btn" style="display:inline-flex;align-items:center;gap:4px;text-decoration:none;margin-right:3px;"><i class="fas fa-comment"></i></a>
+        <button onclick="openResetModal('${d.username}')" class="act-btn warn" style="margin-right:3px;"><i class="fas fa-key"></i></button>
+        <button onclick="toggleUser('${d.username}')" id="toggle-btn-${d.username}" class="act-btn" style="margin-right:3px;"><i class="fas fa-ban"></i></button>
+        <button onclick="deleteUser('${d.username}')" class="act-btn danger"><i class="fas fa-trash-alt"></i></button>
       </td>`;
     tbody.insertBefore(tr, tbody.firstChild);
-  } else { errEl.textContent = d.error || 'Failed to create user.'; errEl.style.display='block'; }
+  } else {
+    errEl.textContent = d.error || 'Failed to create user.';
+    errEl.style.display = 'block';
+  }
+}
+
+// ── Reset Password ─────────────────────────────────────────────────────────────
+async function doResetPassword() {
+  if (!resetTarget) return;
+  const pw    = document.getElementById('new-pw-input').value.trim();
+  const errEl = document.getElementById('reset-error');
+  errEl.style.display = 'none';
+  if (!pw || pw.length < 6) {
+    errEl.textContent = 'Password must be at least 6 characters.';
+    errEl.style.display = 'block'; return;
+  }
+  const r = await fetch(`/chat/admin-panel/users/${resetTarget}/reset-password/`, {
+    method: 'POST',
+    headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'},
+    body: JSON.stringify({password: pw})
+  });
+  const d = await r.json();
+  if (d.ok) {
+    closeModal('modal-reset');
+    // Brief success flash
+    const row = document.getElementById(`user-row-${resetTarget}`);
+    if (row) {
+      row.style.background = 'rgba(62,207,142,0.08)';
+      setTimeout(() => row.style.background = '', 2000);
+    }
+    resetTarget = null;
+  } else {
+    errEl.textContent = d.error || 'Failed to reset password.';
+    errEl.style.display = 'block';
+  }
+}
+
+// ── Set Role ──────────────────────────────────────────────────────────────────
+async function setRole(username, role) {
+  const sel = document.getElementById(`role-sel-${username}`);
+  const prev = sel.dataset.prev || sel.value;
+  sel.dataset.prev = role;
+
+  const r = await fetch(`/chat/admin-panel/users/${username}/set-role/`, {
+    method: 'POST',
+    headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'},
+    body: JSON.stringify({role})
+  });
+  const d = await r.json();
+  if (!d.ok) {
+    alert(d.error || 'Failed to change role.');
+    sel.value = prev;   // revert
+  } else {
+    // Flash the row green briefly
+    const row = document.getElementById(`user-row-${username}`);
+    if (row) {
+      row.style.background = 'rgba(62,207,142,0.08)';
+      setTimeout(() => row.style.background = '', 1500);
+    }
+  }
 }
 </script>
 {% endblock extra_js %}
