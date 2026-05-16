@@ -50,8 +50,10 @@ def home_view(request):
             other = User.objects.get(pk=uid)
         except User.DoesNotExist:
             continue
-        # Hide admin conversations from non-admin users
+        # Hide admin conversations from non-admin users; skip ghost 'None' account
         if other.is_superuser and not request.user.is_superuser:
+            continue
+        if other.username == 'None':
             continue
         last  = Message.objects.filter(
             Q(sender=request.user, receiver=other) |
@@ -64,9 +66,9 @@ def home_view(request):
         key=lambda x: x['last_message'].timestamp if x['last_message'] else 0, reverse=True)
     # Exclude superusers from People sidebar for non-admin users
     if request.user.is_superuser:
-        all_users = User.objects.exclude(pk=request.user.pk).exclude(pk__in=chatted_ids)
+        all_users = User.objects.exclude(pk=request.user.pk).exclude(pk__in=chatted_ids).exclude(username='None')
     else:
-        all_users = User.objects.exclude(pk=request.user.pk).exclude(pk__in=chatted_ids).exclude(is_superuser=True)
+        all_users = User.objects.exclude(pk=request.user.pk).exclude(pk__in=chatted_ids).exclude(is_superuser=True).exclude(username='None')
     user_groups = request.user.group_memberships.all().order_by('-created_at')
 
     return render(request, 'chat/home.html', {
@@ -315,16 +317,20 @@ def admin_dashboard_view(request):
             content = msg.message_content if not msg.file else f'📎 {msg.file_name or "file"}'
         except Exception:
             content = '[encrypted]'
+        try:
+            receiver_username = msg.receiver.username if msg.receiver else '—'
+        except Exception:
+            receiver_username = '—'
         recent_messages.append({
             'sender':    msg.sender.username,
-            'receiver':  msg.receiver.username,
+            'receiver':  receiver_username,
             'content':   content,
             'timestamp': timezone.localtime(msg.timestamp).strftime('%H:%M'),
             'encrypted': bool(msg.encrypted_content),
             'file_type': msg.file_type,
         })
 
-    all_users = User.objects.values('username','email','is_active','date_joined').order_by('-date_joined')[:50]
+    all_users = User.objects.exclude(username='None').values('username','email','is_active','date_joined').order_by('-date_joined')[:50]
 
     ctx = {
         'total_users':     total_users,

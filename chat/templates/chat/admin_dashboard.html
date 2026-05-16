@@ -37,7 +37,10 @@
 
 /* ── Main grid ── */
 .main-grid { display: grid; grid-template-columns: 1fr 260px; gap: 18px; align-items: start; }
-@media (max-width: 800px) { .main-grid { grid-template-columns: 1fr; } }
+@media (max-width: 800px) {
+  .main-grid { grid-template-columns: 1fr; }
+  .main-grid .qa-sidebar { order: -1; }
+}
 
 /* ── Table card ── */
 .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
@@ -148,7 +151,13 @@
           {% for msg in recent_messages %}
           <tr>
             <td><a href="{% url 'chat:room' msg.sender %}" class="user-link">{{ msg.sender }}</a></td>
-            <td><a href="{% url 'chat:room' msg.receiver %}" class="user-link">{{ msg.receiver }}</a></td>
+            <td>
+              {% if msg.receiver and msg.receiver != 'None' %}
+                <a href="{% url 'chat:room' msg.receiver %}" class="user-link">{{ msg.receiver }}</a>
+              {% else %}
+                <span style="color:var(--text-muted);">—</span>
+              {% endif %}
+            </td>
             <td><div class="msg-preview">{{ msg.content }}</div></td>
             <td>
               {% if msg.encrypted %}
@@ -167,7 +176,7 @@
     </div>
 
     <!-- Quick Actions sidebar -->
-    <div>
+    <div class="qa-sidebar">
       <div class="card">
         <div class="qa-title"><i class="fas fa-bolt"></i> Quick Actions</div>
         <div class="qa-grid">
@@ -218,6 +227,7 @@
       </thead>
       <tbody id="users-tbody">
         {% for u in all_users %}
+        {% if u.username != 'None' %}
         <tr id="user-row-{{ u.username }}">
           <td><a href="{% url 'chat:room' u.username %}" class="user-link">{{ u.username }}</a></td>
           <td style="color:var(--text-secondary);">{{ u.email|default:'—' }}</td>
@@ -226,12 +236,14 @@
           </td>
           <td style="color:var(--text-muted); font-size:0.78rem;">{{ u.date_joined|date:"M d, Y" }}</td>
           <td style="text-align:right;">
+            <a href="{% url 'chat:room' u.username %}" title="Message this user" style="display:inline-flex;align-items:center;gap:4px;background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 10px;font-size:0.72rem;cursor:pointer;color:var(--accent);margin-right:4px;text-decoration:none;"><i class="fas fa-comment"></i> Message</a>
             <button onclick="toggleUser('{{ u.username }}')" id="toggle-btn-{{ u.username }}" title="Activate / Deactivate" style="background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 10px;font-size:0.72rem;cursor:pointer;color:var(--text-secondary);margin-right:4px;">
               {% if u.is_active %}<i class="fas fa-ban"></i> Deactivate{% else %}<i class="fas fa-check-circle"></i> Activate{% endif %}
             </button>
             <button onclick="deleteUser('{{ u.username }}')" title="Delete user" style="background:none;border:1px solid rgba(246,109,109,0.3);border-radius:var(--radius-sm);padding:4px 10px;font-size:0.72rem;cursor:pointer;color:var(--danger);"><i class="fas fa-trash-alt"></i></button>
           </td>
         </tr>
+        {% endif %}
         {% empty %}
         <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px;">No users found</td></tr>
         {% endfor %}
