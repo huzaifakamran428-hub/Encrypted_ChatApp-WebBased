@@ -350,14 +350,14 @@
   <div class="help-hero">
     <div style="font-size:2.2rem;margin-bottom:10px;">💬</div>
     <h1>ChatApp Help &amp; Guide</h1>
-    <p>Everything you need to know about using ChatApp — from sending your first message to managing users as an admin.</p>
+    <p>Everything you need to know about using ChatApp — from sending your first message to chatting with friends.</p>
     <div class="help-tags">
       <a href="#getting-started" class="help-tag">Getting Started</a>
       <a href="#messaging"       class="help-tag">Messaging</a>
       <a href="#groups"          class="help-tag">Group Chats</a>
       <a href="#profile"         class="help-tag">Your Profile</a>
-      <a href="#encryption"      class="help-tag">Encryption</a>
-      <a href="#admin"           class="help-tag">Admin Panel</a>
+      <a href="#session"         class="help-tag">Login &amp; Security</a>
+      {% if user.is_superuser %}<a href="#admin" class="help-tag">Admin Panel</a>{% endif %}
       <a href="#faq"             class="help-tag">FAQ</a>
     </div>
   </div>
@@ -371,9 +371,8 @@
       <a href="#groups"          class="toc-link"><i class="fas fa-users"></i> Group Chats</a>
       <a href="#search"          class="toc-link"><i class="fas fa-search"></i> Finding Users</a>
       <a href="#profile"         class="toc-link"><i class="fas fa-user"></i> Your Profile</a>
-      <a href="#encryption"      class="toc-link"><i class="fas fa-lock"></i> Encryption</a>
       <a href="#session"         class="toc-link"><i class="fas fa-clock"></i> Session &amp; Login</a>
-      <a href="#admin"           class="toc-link"><i class="fas fa-shield-halved"></i> Admin Panel</a>
+      {% if user.is_superuser %}<a href="#admin" class="toc-link"><i class="fas fa-shield-halved"></i> Admin Panel</a>{% endif %}
       <a href="#faq"             class="toc-link"><i class="fas fa-circle-question"></i> FAQ</a>
     </div>
   </div>
@@ -771,10 +770,10 @@
         </div>
         <div class="mock-body" style="max-width:380px;margin:0 auto;padding:20px 14px;">
           <div style="text-align:center;margin-bottom:16px;">
-            <div style="width:64px;height:64px;border-radius:50%;background:var(--accent-light);border:3px solid var(--accent);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:800;color:var(--accent);">H</div>
-            <div style="font-weight:800;">huzaifa</div>
-            <div style="color:var(--text-muted);font-size:0.75rem;">huzaifakamran428@gmail.com</div>
-            <div style="margin-top:6px;"><span class="pill pill-red">👑 Super Admin</span></div>
+            <div style="width:64px;height:64px;border-radius:50%;background:var(--accent-light);border:3px solid var(--accent);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:800;color:var(--accent);">J</div>
+            <div style="font-weight:800;">John Doe</div>
+            <div style="color:var(--text-muted);font-size:0.75rem;">johndoe@example.com</div>
+            <div style="margin-top:6px;"><span class="pill pill-accent">User</span></div>
           </div>
           <div style="display:flex;flex-direction:column;gap:8px;font-size:0.78rem;">
             <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text-muted);">📷  Upload new avatar</div>
@@ -813,82 +812,9 @@
 
 
   <!-- ══════════════════════════════════════════════════════
-       6. ENCRYPTION
-  ═══════════════════════════════════════════════════════ -->
-  <div class="help-section" id="encryption">
-    <div class="section-header" onclick="toggleSection(this)">
-      <div class="section-icon si-teal"><i class="fas fa-lock"></i></div>
-      <div>
-        <div class="section-title">Encryption &amp; Privacy</div>
-        <div class="section-sub">How your messages are kept secure</div>
-      </div>
-      <i class="fas fa-chevron-down section-chevron"></i>
-    </div>
-    <div class="section-body">
-
-      <!-- Encryption Info Mock -->
-      <div class="mock-screen">
-        <div class="mock-bar">
-          <div class="mock-dot mock-dot-r"></div><div class="mock-dot mock-dot-y"></div><div class="mock-dot mock-dot-g"></div>
-          <div class="mock-url-bar">AES-256 Encrypted System</div>
-        </div>
-        <div class="mock-body">
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:0.74rem;">
-            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;">
-              <div style="font-size:0.62rem;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:.05em;">Algorithm</div>
-              <div style="font-family:monospace;margin-top:3px;">AES-256-CBC</div>
-            </div>
-            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;">
-              <div style="font-size:0.62rem;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:.05em;">Key Size</div>
-              <div style="font-family:monospace;margin-top:3px;">256 bits</div>
-            </div>
-            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;">
-              <div style="font-size:0.62rem;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:.05em;">IV Per Msg</div>
-              <div style="font-family:monospace;margin-top:3px;">128 bits</div>
-            </div>
-          </div>
-          <div style="margin-top:10px;padding:10px;background:rgba(62,207,142,0.08);border:1px solid rgba(62,207,142,0.2);border-radius:var(--radius-sm);font-size:0.76rem;color:var(--success);text-align:center;">
-            <i class="fas fa-shield-halved"></i> &nbsp;Encryption Rate: 100% — Every message protected
-          </div>
-        </div>
-      </div>
-
-      <div class="tips" style="margin-top:16px;">
-        <div class="tip success">
-          <div class="tip-icon">🔐</div>
-          <div class="tip-body">
-            <div class="tip-title">AES-256-CBC Encryption</div>
-            <div class="tip-desc">ChatApp uses the same encryption standard used by banks and governments. Every message is encrypted with a unique 128-bit IV (Initialization Vector) before it is saved — meaning two identical messages will look completely different in the database.</div>
-          </div>
-        </div>
-        <div class="tip">
-          <div class="tip-icon">🔑</div>
-          <div class="tip-body">
-            <div class="tip-title">256-bit key (32 bytes)</div>
-            <div class="tip-desc">The encryption key is 256 bits long — the maximum strength for AES. This means there are more possible keys than atoms in the observable universe.</div>
-          </div>
-        </div>
-        <div class="tip">
-          <div class="tip-icon">🛡️</div>
-          <div class="tip-body">
-            <div class="tip-title">What the 🔒 lock icon means</div>
-            <div class="tip-desc">Every message in a chat room shows a small green lock icon. This confirms that message was stored encrypted in the database. Messages are only decrypted when displayed to authorised users.</div>
-          </div>
-        </div>
-        <div class="tip warning">
-          <div class="tip-icon">⚠️</div>
-          <div class="tip-body">
-            <div class="tip-title">Your screen is your responsibility</div>
-            <div class="tip-desc">Encryption protects messages in transit and at rest. It does not prevent someone from reading your screen. Always lock your device when away from it, and use the Log Out button when on a shared computer.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
 
   <!-- ══════════════════════════════════════════════════════
-       7. SESSION & LOGIN
+       6. SESSION & LOGIN
   ═══════════════════════════════════════════════════════ -->
   <div class="help-section" id="session">
     <div class="section-header" onclick="toggleSection(this)">
@@ -935,8 +861,9 @@
 
 
   <!-- ══════════════════════════════════════════════════════
-       8. ADMIN PANEL
+       8. ADMIN PANEL — superuser only
   ═══════════════════════════════════════════════════════ -->
+  {% if user.is_superuser %}
   <div class="help-section" id="admin">
     <div class="section-header" onclick="toggleSection(this)">
       <div class="section-icon si-red"><i class="fas fa-shield-halved"></i></div>
@@ -1075,6 +1002,7 @@
       </div>
     </div>
   </div>
+  {% endif %}
 
 
   <!-- ══════════════════════════════════════════════════════
@@ -1138,9 +1066,9 @@
 
   <!-- ── Footer ── -->
   <div style="text-align:center;color:var(--text-muted);font-size:0.78rem;margin-top:32px;padding:20px;">
-    <i class="fas fa-lock" style="color:var(--success);"></i> &nbsp;ChatApp — AES-256 Encrypted &nbsp;·&nbsp;
+    <i class="fas fa-lock" style="color:var(--success);"></i> &nbsp;ChatApp &nbsp;·&nbsp;
     <a href="{% url 'chat:home' %}" style="color:var(--accent);text-decoration:none;">Back to Messages</a>
-    {% if user.is_superuser or user.is_staff %}
+    {% if user.is_superuser %}
     &nbsp;·&nbsp;
     <a href="{% url 'chat:admin_dashboard' %}" style="color:var(--accent);text-decoration:none;">Admin Panel</a>
     {% endif %}
