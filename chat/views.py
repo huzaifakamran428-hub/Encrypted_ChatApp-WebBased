@@ -44,6 +44,12 @@ def _is_admin_user(user):
 
 
 @login_required
+def help_view(request):
+    """User-facing help & guide page."""
+    return render(request, 'chat/help.html')
+
+
+@login_required
 def home_view(request):
     sent_to       = Message.objects.filter(sender=request.user).values_list('receiver', flat=True)
     received_from = Message.objects.filter(receiver=request.user).values_list('sender', flat=True)

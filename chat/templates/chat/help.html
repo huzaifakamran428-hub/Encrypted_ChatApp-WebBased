@@ -1,0 +1,1188 @@
+{% extends 'base.html' %}
+{% block title %}Help & Guide — ChatApp{% endblock %}
+
+{% block extra_css %}
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+
+/* ── Page Layout ── */
+.help-wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 28px 16px 60px;
+}
+
+/* ── Hero ── */
+.help-hero {
+  text-align: center;
+  padding: 36px 24px 32px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 28px;
+}
+.help-hero h1 {
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+}
+.help-hero p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 0 0 20px;
+}
+.help-tags { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.help-tag {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.help-tag:hover { background: var(--accent); color: #fff; text-decoration: none; }
+
+/* ── TOC ── */
+.toc {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 28px;
+}
+.toc h3 {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-muted);
+  margin: 0 0 14px;
+}
+.toc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px;
+}
+.toc-link {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.83rem;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s;
+}
+.toc-link i { color: var(--accent); font-size: 0.8rem; width: 16px; text-align: center; }
+.toc-link:hover { background: var(--accent-light); color: var(--text-primary); text-decoration: none; }
+
+/* ── Sections ── */
+.help-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.section-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+.section-header:hover { background: var(--bg-secondary); }
+.section-icon {
+  width: 38px; height: 38px;
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.si-purple { background: rgba(124,106,247,0.15); color: var(--accent); }
+.si-teal   { background: rgba(62,207,142,0.15);  color: var(--success); }
+.si-orange { background: rgba(245,166,35,0.15);  color: var(--warning); }
+.si-red    { background: rgba(246,109,109,0.15); color: var(--danger); }
+.si-blue   { background: rgba(0,180,216,0.15);   color: #00b4d8; }
+.si-pink   { background: rgba(255,100,180,0.15); color: #ff64b4; }
+
+.section-title { font-weight: 700; font-size: 0.95rem; flex: 1; }
+.section-sub   { font-size: 0.76rem; color: var(--text-muted); margin-top: 2px; }
+.section-chevron { color: var(--text-muted); font-size: 0.8rem; transition: transform 0.25s; }
+.section-header.open .section-chevron { transform: rotate(180deg); }
+
+.section-body { display: none; padding: 20px; }
+.section-body.open { display: block; }
+
+/* ── Steps ── */
+.steps { display: flex; flex-direction: column; gap: 14px; }
+.step {
+  display: flex; gap: 14px; align-items: flex-start;
+}
+.step-num {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.step-body { flex: 1; }
+.step-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 3px; }
+.step-desc  { color: var(--text-muted); font-size: 0.82rem; line-height: 1.5; }
+
+/* ── Mock Screenshots ── */
+.mock-screen {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin: 16px 0;
+  font-size: 0.78rem;
+}
+.mock-bar {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.mock-dot { width: 8px; height: 8px; border-radius: 50%; }
+.mock-dot-r { background: #ff5f56; }
+.mock-dot-y { background: #ffbd2e; }
+.mock-dot-g { background: #27c93f; }
+.mock-url-bar {
+  flex: 1;
+  background: var(--bg-primary);
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-align: center;
+  max-width: 260px;
+}
+.mock-body { padding: 14px; }
+
+/* ── Mock Navbar ── */
+.mock-nav {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.76rem;
+}
+.mock-nav-brand { font-weight: 800; color: var(--accent); display: flex; align-items: center; gap: 5px; }
+.mock-nav-right { display: flex; align-items: center; gap: 8px; color: var(--text-muted); }
+.mock-avatar { width: 22px; height: 22px; border-radius: 50%; background: var(--accent-light); border: 1.5px solid var(--accent); display: flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: 800; color: var(--accent); }
+
+/* ── Mock Chat List ── */
+.mock-chat-list { display: flex; flex-direction: column; }
+.mock-conv {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 14px; border-bottom: 1px solid var(--border);
+  font-size: 0.76rem;
+}
+.mock-conv:last-child { border-bottom: none; }
+.mock-av {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 0.8rem; flex-shrink: 0;
+}
+.mock-conv-info { flex: 1; }
+.mock-conv-name { font-weight: 700; color: var(--text-primary); }
+.mock-conv-msg  { color: var(--text-muted); font-size: 0.7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mock-conv-time { color: var(--text-muted); font-size: 0.68rem; }
+.mock-unread {
+  background: var(--accent); color: #fff; border-radius: 50%;
+  width: 18px; height: 18px; font-size: 0.65rem; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.mock-badge-new {
+  font-size: 0.62rem; font-weight: 700;
+  background: rgba(62,207,142,0.15); color: var(--success);
+  border-radius: 10px; padding: 1px 6px;
+}
+
+/* ── Mock Chat Room ── */
+.mock-room { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; min-height: 120px; }
+.mock-bubble {
+  max-width: 70%; border-radius: 14px; padding: 7px 12px;
+  font-size: 0.76rem; line-height: 1.4;
+}
+.mock-bubble-out {
+  background: var(--accent);
+  color: #fff;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+.mock-bubble-in {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+.mock-bubble-meta { font-size: 0.6rem; opacity: 0.7; margin-top: 3px; text-align: right; }
+.mock-enc-icon { font-size: 0.6rem; }
+
+/* ── Mock Input Bar ── */
+.mock-input-bar {
+  border-top: 1px solid var(--border);
+  padding: 10px 14px;
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-card);
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+.mock-input {
+  flex: 1; background: var(--bg-secondary);
+  border: 1px solid var(--border); border-radius: 20px;
+  padding: 6px 12px; color: var(--text-muted); font-size: 0.75rem;
+}
+.mock-send-btn {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.75rem;
+}
+
+/* ── Mock Admin ── */
+.mock-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; }
+.mock-stat-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px;
+  text-align: center;
+}
+.mock-stat-num { font-size: 1.1rem; font-weight: 800; }
+.mock-stat-lbl { font-size: 0.65rem; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Mock User Row ── */
+.mock-user-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px; border-bottom: 1px solid var(--border);
+  font-size: 0.76rem;
+}
+.mock-user-row:last-child { border-bottom: none; }
+.mock-role-badge {
+  border-radius: 20px; padding: 1px 8px; font-size: 0.65rem; font-weight: 700;
+}
+.rb-admin  { background: rgba(245,166,35,0.15);  color: var(--warning); }
+.rb-user   { background: rgba(124,106,247,0.15); color: var(--accent); }
+.rb-super  { background: rgba(246,109,109,0.15); color: var(--danger); }
+.mock-actions { display: flex; gap: 6px; margin-left: auto; color: var(--text-muted); font-size: 0.75rem; }
+
+/* ── Tips ── */
+.tips { display: flex; flex-direction: column; gap: 10px; }
+.tip {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 12px 14px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--accent);
+}
+.tip-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+.tip-body  { flex: 1; }
+.tip-title { font-weight: 700; font-size: 0.85rem; margin-bottom: 3px; }
+.tip-desc  { color: var(--text-muted); font-size: 0.8rem; line-height: 1.5; }
+.tip.warning { border-left-color: var(--warning); }
+.tip.success { border-left-color: var(--success); }
+.tip.danger  { border-left-color: var(--danger); }
+
+/* ── Shortcut Table ── */
+.shortcut-grid { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: center; }
+.shortcut-key {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: monospace; font-size: 0.78rem;
+}
+.key-badge {
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1px 7px;
+  font-size: 0.72rem; color: var(--text-primary); font-weight: 700;
+}
+.shortcut-desc { font-size: 0.82rem; color: var(--text-muted); }
+
+/* ── FAQ ── */
+.faq { display: flex; flex-direction: column; gap: 10px; }
+.faq-item { background: var(--bg-secondary); border-radius: var(--radius-sm); overflow: hidden; }
+.faq-q {
+  padding: 12px 16px; font-weight: 700; font-size: 0.85rem;
+  cursor: pointer; display: flex; align-items: center; gap: 8px;
+}
+.faq-q i { color: var(--accent); font-size: 0.75rem; }
+.faq-a {
+  padding: 0 16px 14px 16px; font-size: 0.82rem;
+  color: var(--text-muted); line-height: 1.6; display: none;
+}
+.faq-item.open .faq-a { display: block; }
+
+/* ── Divider inside section ── */
+.help-divider {
+  border: none; border-top: 1px solid var(--border);
+  margin: 18px 0;
+}
+
+/* ── Inline pill ── */
+.pill {
+  display: inline-block;
+  border-radius: 20px; padding: 1px 9px;
+  font-size: 0.72rem; font-weight: 700;
+}
+.pill-accent  { background: rgba(124,106,247,0.15); color: var(--accent); }
+.pill-green   { background: rgba(62,207,142,0.15);  color: var(--success); }
+.pill-orange  { background: rgba(245,166,35,0.15);  color: var(--warning); }
+.pill-red     { background: rgba(246,109,109,0.15); color: var(--danger); }
+
+@media (max-width: 600px) {
+  .toc-grid { grid-template-columns: 1fr 1fr; }
+  .mock-stats { grid-template-columns: 1fr 1fr; }
+  .help-hero h1 { font-size: 1.3rem; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="help-wrap">
+
+  <!-- ── Hero ── -->
+  <div class="help-hero">
+    <div style="font-size:2.2rem;margin-bottom:10px;">💬</div>
+    <h1>ChatApp Help &amp; Guide</h1>
+    <p>Everything you need to know about using ChatApp — from sending your first message to managing users as an admin.</p>
+    <div class="help-tags">
+      <a href="#getting-started" class="help-tag">Getting Started</a>
+      <a href="#messaging"       class="help-tag">Messaging</a>
+      <a href="#groups"          class="help-tag">Group Chats</a>
+      <a href="#profile"         class="help-tag">Your Profile</a>
+      <a href="#encryption"      class="help-tag">Encryption</a>
+      <a href="#admin"           class="help-tag">Admin Panel</a>
+      <a href="#faq"             class="help-tag">FAQ</a>
+    </div>
+  </div>
+
+  <!-- ── TOC ── -->
+  <div class="toc">
+    <h3>📋 Sections on this page</h3>
+    <div class="toc-grid">
+      <a href="#getting-started" class="toc-link"><i class="fas fa-rocket"></i> Getting Started</a>
+      <a href="#messaging"       class="toc-link"><i class="fas fa-comment"></i> Messaging</a>
+      <a href="#groups"          class="toc-link"><i class="fas fa-users"></i> Group Chats</a>
+      <a href="#search"          class="toc-link"><i class="fas fa-search"></i> Finding Users</a>
+      <a href="#profile"         class="toc-link"><i class="fas fa-user"></i> Your Profile</a>
+      <a href="#encryption"      class="toc-link"><i class="fas fa-lock"></i> Encryption</a>
+      <a href="#session"         class="toc-link"><i class="fas fa-clock"></i> Session &amp; Login</a>
+      <a href="#admin"           class="toc-link"><i class="fas fa-shield-halved"></i> Admin Panel</a>
+      <a href="#faq"             class="toc-link"><i class="fas fa-circle-question"></i> FAQ</a>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════
+       1. GETTING STARTED
+  ═══════════════════════════════════════════════════════ -->
+  <div class="help-section" id="getting-started">
+    <div class="section-header open" onclick="toggleSection(this)">
+      <div class="section-icon si-purple"><i class="fas fa-rocket"></i></div>
+      <div>
+        <div class="section-title">Getting Started</div>
+        <div class="section-sub">Create your account and log in for the first time</div>
+      </div>
+      <i class="fas fa-chevron-down section-chevron"></i>
+    </div>
+    <div class="section-body open">
+
+      <!-- Register Screenshot Mock -->
+      <div class="mock-screen">
+        <div class="mock-bar">
+          <div class="mock-dot mock-dot-r"></div>
+          <div class="mock-dot mock-dot-y"></div>
+          <div class="mock-dot mock-dot-g"></div>
+          <div class="mock-url-bar">chatapplica.up.railway.app/users/register/</div>
+        </div>
+        <div class="mock-nav">
+          <div class="mock-nav-brand"><i class="fas fa-comments"></i> ChatApp</div>
+        </div>
+        <div class="mock-body" style="max-width:340px;margin:0 auto;padding:20px 14px;">
+          <div style="text-align:center;margin-bottom:16px;">
+            <div style="font-size:1.8rem;">💬</div>
+            <div style="font-weight:800;font-size:1rem;margin:4px 0;">Create Account</div>
+            <div style="color:var(--text-muted);font-size:0.75rem;">Join ChatApp today</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:0.78rem;">
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text-muted);">👤  Username</div>
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text-muted);">✉️  Email address</div>
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text-muted);">🔒  Password</div>
+            <div style="background:var(--accent);color:#fff;border-radius:var(--radius-sm);padding:8px 12px;text-align:center;font-weight:700;">Create Account →</div>
+          </div>
+          <div style="text-align:center;margin-top:12px;color:var(--text-muted);font-size:0.72rem;">Already have an account? <span style="color:var(--accent);">Log in</span></div>
+        </div>
+      </div>
+
+      <div class="steps" style="margin-top:16px;">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Open the Register page</div>
+            <div class="step-desc">Go to <strong>/users/register/</strong> or click <em>"Sign Up"</em> on the login screen. You'll need a username, an email address, and a password.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Verify your email with OTP</div>
+            <div class="step-desc">After submitting the form, ChatApp sends a 6-digit OTP to your email. Enter it on the verification screen. The code expires quickly, so check your inbox right away (also check spam/junk).</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Log in</div>
+            <div class="step-desc">Use your username and password at <strong>/users/login/</strong>. You'll land on the Messages home page.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">Start your first chat</div>
+            <div class="step-desc">On the home page you'll see two panels — <strong>Conversations</strong> (left) and <strong>People</strong> (right). Click any name in People to open a chat room.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tips" style="margin-top:16px;">
+        <div class="tip warning">
+          <div class="tip-icon">⏱️</div>
+          <div class="tip-body">
+            <div class="tip-title">30-minute session timeout</div>
+            <div class="tip-desc">For your security, ChatApp automatically logs you out after 30 minutes of inactivity. You will see a warning and be sent to the login page. Simply log in again to continue.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════
+       2. MESSAGING
+  ═══════════════════════════════════════════════════════ -->
+  <div class="help-section" id="messaging">
+    <div class="section-header" onclick="toggleSection(this)">
+      <div class="section-icon si-teal"><i class="fas fa-comment-dots"></i></div>
+      <div>
+        <div class="section-title">Sending &amp; Receiving Messages</div>
+        <div class="section-sub">Text, voice notes, and file sharing</div>
+      </div>
+      <i class="fas fa-chevron-down section-chevron"></i>
+    </div>
+    <div class="section-body">
+
+      <!-- Chat Room Mock -->
+      <div class="mock-screen">
+        <div class="mock-bar">
+          <div class="mock-dot mock-dot-r"></div><div class="mock-dot mock-dot-y"></div><div class="mock-dot mock-dot-g"></div>
+          <div class="mock-url-bar">chatapplica.up.railway.app/chat/room/Alice/</div>
+        </div>
+        <div class="mock-nav">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="mock-avatar" style="background:rgba(62,207,142,0.15);border-color:var(--success);color:var(--success);">A</div>
+            <div>
+              <div style="font-weight:700;font-size:0.8rem;">Alice</div>
+              <div style="color:var(--success);font-size:0.65rem;">● Online</div>
+            </div>
+          </div>
+          <div style="color:var(--text-muted);font-size:0.78rem;display:flex;gap:12px;">
+            <i class="fas fa-trash-can"></i>
+            <i class="fas fa-ellipsis"></i>
+          </div>
+        </div>
+        <div class="mock-room">
+          <div class="mock-bubble mock-bubble-in">
+            Hey! How are you?
+            <div class="mock-bubble-meta">09:31 <i class="fas fa-lock mock-enc-icon"></i></div>
+          </div>
+          <div class="mock-bubble mock-bubble-out">
+            I'm great, thanks! 😊
+            <div class="mock-bubble-meta">09:32 ✓✓</div>
+          </div>
+          <div class="mock-bubble mock-bubble-in">
+            Want to share that file?
+            <div class="mock-bubble-meta">09:33 <i class="fas fa-lock mock-enc-icon"></i></div>
+          </div>
+        </div>
+        <div class="mock-input-bar">
+          <i class="fas fa-paperclip" style="color:var(--text-muted);"></i>
+          <i class="fas fa-microphone" style="color:var(--text-muted);"></i>
+          <div class="mock-input">Type a message…</div>
+          <div class="mock-send-btn"><i class="fas fa-paper-plane"></i></div>
+        </div>
+      </div>
+
+      <div class="steps" style="margin-top:16px;">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Open a conversation</div>
+            <div class="step-desc">Click any name in your Conversations list or from the People panel. The chat room opens instantly.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Type and send</div>
+            <div class="step-desc">Click the text box at the bottom, type your message, then press <span class="key-badge">Enter</span> or click the <i class="fas fa-paper-plane" style="color:var(--accent);"></i> send button.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Send a file</div>
+            <div class="step-desc">Click the <i class="fas fa-paperclip" style="color:var(--accent);"></i> paperclip icon and choose a file from your device. Images, documents, and other files are supported.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">Send a voice note</div>
+            <div class="step-desc">Click and hold the <i class="fas fa-microphone" style="color:var(--accent);"></i> microphone icon to record. Release to send. Your browser will ask for microphone permission the first time.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <div class="step-title">Delete a message</div>
+            <div class="step-desc">Hover over any message you sent — a delete icon appears. Click it to remove that message. You can also delete the entire conversation using the 🗑 button at the top of the chat room.</div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="help-divider">
+      <div style="font-weight:700;font-size:0.85rem;margin-bottom:10px;">⌨️ Keyboard Shortcuts</div>
+      <div class="shortcut-grid">
+        <div class="shortcut-key"><span class="key-badge">Enter</span></div>
+        <div class="shortcut-desc">Send message</div>
+        <div class="shortcut-key"><span class="key-badge">Shift</span> + <span class="key-badge">Enter</span></div>
+        <div class="shortcut-desc">New line (multi-line message)</div>
+        <div class="shortcut-key"><span class="key-badge">Esc</span></div>
+        <div class="shortcut-desc">Close modal / cancel</div>
+      </div>
+
+      <div class="tips" style="margin-top:16px;">
+        <div class="tip success">
+          <div class="tip-icon">🔒</div>
+          <div class="tip-body">
+            <div class="tip-title">All messages are encrypted</div>
+            <div class="tip-desc">Every message is protected with AES-256-CBC encryption before being stored. The <i class="fas fa-lock" style="color:var(--success);"></i> lock icon on each message confirms it is encrypted.</div>
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-icon">🔔</div>
+          <div class="tip-body">
+            <div class="tip-title">Real-time notifications</div>
+            <div class="tip-desc">When a new message arrives the conversation moves to the top of your list with a purple unread badge. A toast notification also pops up in the corner if you're on another page.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════
+       3. GROUP CHATS
+  ═══════════════════════════════════════════════════════ -->
+  <div class="help-section" id="groups">
+    <div class="section-header" onclick="toggleSection(this)">
+      <div class="section-icon si-orange"><i class="fas fa-users"></i></div>
+      <div>
+        <div class="section-title">Group Chats</div>
+        <div class="section-sub">Create groups, add members, and chat together</div>
+      </div>
+      <i class="fas fa-chevron-down section-chevron"></i>
+    </div>
+    <div class="section-body">
+
+      <!-- Groups Mock -->
+      <div class="mock-screen">
+        <div class="mock-bar">
+          <div class="mock-dot mock-dot-r"></div><div class="mock-dot mock-dot-y"></div><div class="mock-dot mock-dot-g"></div>
+          <div class="mock-url-bar">chatapplica.up.railway.app/chat/group/1/</div>
+        </div>
+        <div class="mock-nav">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="mock-avatar" style="background:rgba(245,166,35,0.15);border-color:var(--warning);color:var(--warning);">T</div>
+            <div>
+              <div style="font-weight:700;font-size:0.8rem;">Team Alpha</div>
+              <div style="color:var(--text-muted);font-size:0.65rem;">4 members</div>
+            </div>
+          </div>
+          <div style="color:var(--text-muted);font-size:0.78rem;display:flex;gap:12px;">
+            <i class="fas fa-user-plus"></i>
+            <i class="fas fa-right-from-bracket"></i>
+          </div>
+        </div>
+        <div class="mock-room">
+          <div class="mock-bubble mock-bubble-in">
+            <span style="font-size:0.65rem;color:var(--accent);font-weight:700;">Bob</span><br>
+            Good morning everyone! 👋
+            <div class="mock-bubble-meta">08:00 <i class="fas fa-lock mock-enc-icon"></i></div>
+          </div>
+          <div class="mock-bubble mock-bubble-out">
+            Morning! Ready for the meeting?
+            <div class="mock-bubble-meta">08:01 ✓✓</div>
+          </div>
+        </div>
+        <div class="mock-input-bar">
+          <i class="fas fa-paperclip" style="color:var(--text-muted);"></i>
+          <i class="fas fa-microphone" style="color:var(--text-muted);"></i>
+          <div class="mock-input">Message Team Alpha…</div>
+          <div class="mock-send-btn"><i class="fas fa-paper-plane"></i></div>
+        </div>
+      </div>
+
+      <div class="steps" style="margin-top:16px;">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Create a group</div>
+            <div class="step-desc">On the home page, switch to the <strong>Groups</strong> tab in the right panel. Click <strong>"+ New Group"</strong>. Give your group a name, then click Create.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Add members</div>
+            <div class="step-desc">Inside the group chat, click the <i class="fas fa-user-plus" style="color:var(--accent);"></i> icon in the top bar. Search for a username and add them. They immediately appear in the member list.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Chat in the group</div>
+            <div class="step-desc">Same as direct messages — type in the box and press Enter. Each message shows the sender's name in the bubble. Files and voice notes work here too.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">Leave a group</div>
+            <div class="step-desc">Click the <i class="fas fa-right-from-bracket" style="color:var(--danger);"></i> leave icon at the top of the group room. You'll be removed immediately and will no longer receive messages from that group.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tips" style="margin-top:16px;">
+        <div class="tip">
+          <div class="tip-icon">👑</div>
+          <div class="tip-body">
+            <div class="tip-title">Group creator privileges</div>
+            <div class="tip-desc">Only the person who created the group can delete all messages. Any member can add new participants.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════
+       4. SEARCH
+  ═══════════════════════════════════════════════════════ -->
+  <div class="help-section" id="search">
+    <div class="section-header" onclick="toggleSection(this)">
+      <div class="section-icon si-blue"><i class="fas fa-magnifying-glass"></i></div>
+      <div>
+        <div class="section-title">Finding Users</div>
+        <div class="section-sub">Search for people and start new conversations</div>
+      </div>
+      <i class="fas fa-chevron-down section-chevron"></i>
+    </div>
+    <div class="section-body">
+
+      <!-- Search Mock -->
+      <div class="mock-screen">
+        <div class="mock-bar">
+          <div class="mock-dot mock-dot-r"></div><div class="mock-dot mock-dot-y"></div><div class="mock-dot mock-dot-g"></div>
+          <div class="mock-url-bar">chatapplica.up.railway.app/chat/search/</div>
+        </div>
+        <div class="mock-body" style="padding:16px 14px;">
+          <div style="font-weight:700;font-size:0.88rem;margin-bottom:10px;">🔍 Search Users</div>
+          <div style="display:flex;gap:8px;margin-bottom:14px;">
+            <div style="flex:1;background:var(--bg-card);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:7px 12px;font-size:0.78rem;color:var(--text-muted);">ali…</div>
+            <div style="background:var(--accent);color:#fff;border-radius:var(--radius-sm);padding:7px 14px;font-size:0.78rem;font-weight:700;">Search</div>
+          </div>
+          <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:8px;">Results for "ali"</div>
+          <div class="mock-conv" style="border:1px solid var(--border);border-radius:var(--radius-sm);">
+            <div class="mock-av" style="background:rgba(62,207,142,0.15);color:var(--success);">A</div>
+            <div class="mock-conv-info">
+              <div class="mock-conv-name">Alice</div>
+              <div class="mock-conv-msg">alice@example.com</div>
+            </div>
+            <div style="background:var(--accent);color:#fff;border-radius:var(--radius-sm);padding:4px 10px;font-size:0.7rem;font-weight:700;">Message</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="steps" style="margin-top:16px;">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Open Search</div>
+            <div class="step-desc">Click the <i class="fas fa-search" style="color:var(--accent);"></i> search icon in the top navigation bar (visible from any page).</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Type a username</div>
+            <div class="step-desc">Enter part of a username and click Search. Matching users appear as cards below. Admin and superuser accounts are hidden from search results for normal users.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Start chatting</div>
+            <div class="step-desc">Click <strong>Message</strong> next to any result. You'll be taken straight to the chat room for that person.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════
+       5. PROFILE
+  ═══════════════════════════════════════════════════════ -->
+  <div class="help-section" id="profile">
+    <div class="section-header" onclick="toggleSection(this)">
+      <div class="section-icon si-pink"><i class="fas fa-user-pen"></i></div>
+      <div>
+        <div class="section-title">Your Profile</div>
+        <div class="section-sub">Update your avatar, display name, and password</div>
+      </div>
+      <i class="fas fa-chevron-down section-chevron"></i>
+    </div>
+    <div class="section-body">
+
+      <!-- Profile Mock -->
+      <div class="mock-screen">
+        <div class="mock-bar">
+          <div class="mock-dot mock-dot-r"></div><div class="mock-dot mock-dot-y"></div><div class="mock-dot mock-dot-g"></div>
+          <div class="mock-url-bar">chatapplica.up.railway.app/users/profile/</div>
+        </div>
+        <div class="mock-body" style="max-width:380px;margin:0 auto;padding:20px 14px;">
+          <div style="text-align:center;margin-bottom:16px;">
+            <div style="width:64px;height:64px;border-radius:50%;background:var(--accent-light);border:3px solid var(--accent);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:800;color:var(--accent);">H</div>
+            <div style="font-weight:800;">huzaifa</div>
+            <div style="color:var(--text-muted);font-size:0.75rem;">huzaifakamran428@gmail.com</div>
+            <div style="margin-top:6px;"><span class="pill pill-red">👑 Super Admin</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:0.78rem;">
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text-muted);">📷  Upload new avatar</div>
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text-muted);">✉️  Email address</div>
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text-muted);">🔑  New password (optional)</div>
+            <div style="background:var(--accent);color:#fff;border-radius:var(--radius-sm);padding:8px 12px;text-align:center;font-weight:700;">Save Changes</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="steps" style="margin-top:16px;">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Open Profile</div>
+            <div class="step-desc">Click your avatar or username in the top-right corner of the navigation bar. This opens your profile page.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Change your avatar</div>
+            <div class="step-desc">Click the photo upload field and choose an image file (JPG, PNG, etc.). Your new avatar will appear in the navbar and in all chat rooms.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Update email or password</div>
+            <div class="step-desc">Fill in the Email or Password field and click <strong>Save Changes</strong>. Leave the password fields blank if you only want to update your email.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════
+       6. ENCRYPTION
+  ═══════════════════════════════════════════════════════ -->
+  <div class="help-section" id="encryption">
+    <div class="section-header" onclick="toggleSection(this)">
+      <div class="section-icon si-teal"><i class="fas fa-lock"></i></div>
+      <div>
+        <div class="section-title">Encryption &amp; Privacy</div>
+        <div class="section-sub">How your messages are kept secure</div>
+      </div>
+      <i class="fas fa-chevron-down section-chevron"></i>
+    </div>
+    <div class="section-body">
+
+      <!-- Encryption Info Mock -->
+      <div class="mock-screen">
+        <div class="mock-bar">
+          <div class="mock-dot mock-dot-r"></div><div class="mock-dot mock-dot-y"></div><div class="mock-dot mock-dot-g"></div>
+          <div class="mock-url-bar">AES-256 Encrypted System</div>
+        </div>
+        <div class="mock-body">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:0.74rem;">
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;">
+              <div style="font-size:0.62rem;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:.05em;">Algorithm</div>
+              <div style="font-family:monospace;margin-top:3px;">AES-256-CBC</div>
+            </div>
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;">
+              <div style="font-size:0.62rem;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:.05em;">Key Size</div>
+              <div style="font-family:monospace;margin-top:3px;">256 bits</div>
+            </div>
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;">
+              <div style="font-size:0.62rem;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:.05em;">IV Per Msg</div>
+              <div style="font-family:monospace;margin-top:3px;">128 bits</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;padding:10px;background:rgba(62,207,142,0.08);border:1px solid rgba(62,207,142,0.2);border-radius:var(--radius-sm);font-size:0.76rem;color:var(--success);text-align:center;">
+            <i class="fas fa-shield-halved"></i> &nbsp;Encryption Rate: 100% — Every message protected
+          </div>
+        </div>
+      </div>
+
+      <div class="tips" style="margin-top:16px;">
+        <div class="tip success">
+          <div class="tip-icon">🔐</div>
+          <div class="tip-body">
+            <div class="tip-title">AES-256-CBC Encryption</div>
+            <div class="tip-desc">ChatApp uses the same encryption standard used by banks and governments. Every message is encrypted with a unique 128-bit IV (Initialization Vector) before it is saved — meaning two identical messages will look completely different in the database.</div>
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-icon">🔑</div>
+          <div class="tip-body">
+            <div class="tip-title">256-bit key (32 bytes)</div>
+            <div class="tip-desc">The encryption key is 256 bits long — the maximum strength for AES. This means there are more possible keys than atoms in the observable universe.</div>
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-icon">🛡️</div>
+          <div class="tip-body">
+            <div class="tip-title">What the 🔒 lock icon means</div>
+            <div class="tip-desc">Every message in a chat room shows a small green lock icon. This confirms that message was stored encrypted in the database. Messages are only decrypted when displayed to authorised users.</div>
+          </div>
+        </div>
+        <div class="tip warning">
+          <div class="tip-icon">⚠️</div>
+          <div class="tip-body">
+            <div class="tip-title">Your screen is your responsibility</div>
+            <div class="tip-desc">Encryption protects messages in transit and at rest. It does not prevent someone from reading your screen. Always lock your device when away from it, and use the Log Out button when on a shared computer.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════
+       7. SESSION & LOGIN
+  ═══════════════════════════════════════════════════════ -->
+  <div class="help-section" id="session">
+    <div class="section-header" onclick="toggleSection(this)">
+      <div class="section-icon si-orange"><i class="fas fa-clock"></i></div>
+      <div>
+        <div class="section-title">Session &amp; Login Security</div>
+        <div class="section-sub">Automatic timeout, OTP, and staying logged in</div>
+      </div>
+      <i class="fas fa-chevron-down section-chevron"></i>
+    </div>
+    <div class="section-body">
+      <div class="tips">
+        <div class="tip warning">
+          <div class="tip-icon">⏰</div>
+          <div class="tip-body">
+            <div class="tip-title">Automatic logout after 30 minutes idle</div>
+            <div class="tip-desc">If you haven't sent a message, loaded a page, or clicked anything for 30 minutes, ChatApp will automatically log you out and redirect you to the login page. You'll see the message: <em>"Your session expired after 30 minutes of inactivity."</em> This is a security feature — it protects your account if you leave your device unattended.</div>
+          </div>
+        </div>
+        <div class="tip">
+          <div class="tip-icon">📧</div>
+          <div class="tip-body">
+            <div class="tip-title">Email OTP on registration</div>
+            <div class="tip-desc">When you create an account, a one-time password (OTP) is sent to your email. You must enter this code to activate your account. If you don't receive it, check your spam folder or click <strong>Resend OTP</strong> on the verification screen.</div>
+          </div>
+        </div>
+        <div class="tip success">
+          <div class="tip-icon">✅</div>
+          <div class="tip-body">
+            <div class="tip-title">Activity keeps you logged in</div>
+            <div class="tip-desc">As long as you are actively using the app (typing, navigating, reading messages), your session resets automatically and you stay logged in. The 30-minute timer only counts <em>idle</em> time.</div>
+          </div>
+        </div>
+        <div class="tip danger">
+          <div class="tip-icon">🚪</div>
+          <div class="tip-body">
+            <div class="tip-title">Always log out on shared devices</div>
+            <div class="tip-desc">On a shared or public computer, always click your username in the navbar → <strong>Log Out</strong>. Don't rely on the auto-timeout alone.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════
+       8. ADMIN PANEL
+  ═══════════════════════════════════════════════════════ -->
+  <div class="help-section" id="admin">
+    <div class="section-header" onclick="toggleSection(this)">
+      <div class="section-icon si-red"><i class="fas fa-shield-halved"></i></div>
+      <div>
+        <div class="section-title">Admin Panel</div>
+        <div class="section-sub">For Super Admins and Admins only</div>
+      </div>
+      <i class="fas fa-chevron-down section-chevron"></i>
+    </div>
+    <div class="section-body">
+
+      <div class="tips" style="margin-bottom:16px;">
+        <div class="tip warning">
+          <div class="tip-icon">🔐</div>
+          <div class="tip-body">
+            <div class="tip-title">Admin Panel is restricted</div>
+            <div class="tip-desc">Only accounts marked as <span class="pill pill-red">Super Admin</span> or <span class="pill pill-orange">Admin</span> can access the Admin Panel. Normal users cannot see this section at all.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Admin Dashboard Mock -->
+      <div class="mock-screen">
+        <div class="mock-bar">
+          <div class="mock-dot mock-dot-r"></div><div class="mock-dot mock-dot-y"></div><div class="mock-dot mock-dot-g"></div>
+          <div class="mock-url-bar">chatapplica.up.railway.app/chat/admin-panel/</div>
+        </div>
+        <div class="mock-nav">
+          <div class="mock-nav-brand"><i class="fas fa-comments"></i> ChatApp Admin</div>
+          <div style="background:rgba(62,207,142,0.12);border:1px solid var(--success);color:var(--success);border-radius:20px;padding:2px 10px;font-size:0.68rem;font-weight:700;">🔒 AES-256 Encrypted</div>
+        </div>
+        <div class="mock-body">
+          <div class="mock-stats">
+            <div class="mock-stat-card"><div class="mock-stat-num" style="color:var(--accent);">3</div><div class="mock-stat-lbl">Total Users</div></div>
+            <div class="mock-stat-card"><div class="mock-stat-num" style="color:var(--success);">5</div><div class="mock-stat-lbl">Total Messages</div></div>
+            <div class="mock-stat-card"><div class="mock-stat-num" style="color:var(--warning);">0</div><div class="mock-stat-lbl">Group Chats</div></div>
+          </div>
+          <div style="font-size:0.76rem;font-weight:700;margin-bottom:8px;">👥 Manage Users</div>
+          <div class="mock-user-row">
+            <div class="mock-av" style="background:rgba(245,166,35,0.15);color:var(--warning);">G</div>
+            <div style="flex:1;">
+              <div style="font-weight:700;">Ghost</div>
+            </div>
+            <span class="mock-role-badge rb-admin">Admin</span>
+            <div class="mock-actions"><i class="fas fa-comment"></i><i class="fas fa-key"></i><i class="fas fa-clock"></i><i class="fas fa-trash"></i></div>
+          </div>
+          <div class="mock-user-row">
+            <div class="mock-av" style="background:rgba(124,106,247,0.15);color:var(--accent);">H</div>
+            <div style="flex:1;">
+              <div style="font-weight:700;">Huzaifakamran</div>
+            </div>
+            <span class="mock-role-badge rb-user">User</span>
+            <div class="mock-actions"><i class="fas fa-comment"></i><i class="fas fa-key"></i><i class="fas fa-clock"></i><i class="fas fa-trash"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="help-divider">
+      <div style="font-weight:700;font-size:0.88rem;margin-bottom:12px;">🛠️ What admins can do</div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num"><i class="fas fa-user-plus" style="font-size:0.7rem;"></i></div>
+          <div class="step-body">
+            <div class="step-title">Add Users</div>
+            <div class="step-desc">Click <strong>+ Add User</strong> in the Manage Users section. Fill in username, email, and a temporary password. The new user can log in immediately.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"><i class="fas fa-user-gear" style="font-size:0.7rem;"></i></div>
+          <div class="step-body">
+            <div class="step-title">Change User Role</div>
+            <div class="step-desc">Use the Role dropdown (<span class="pill pill-orange">Admin</span> / <span class="pill pill-accent">User</span>) next to each user to promote or demote them. Admins are hidden from normal users and can message everyone. Only the Super Admin can set other admins.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"><i class="fas fa-ban" style="font-size:0.7rem;"></i></div>
+          <div class="step-body">
+            <div class="step-title">Suspend / Activate a User</div>
+            <div class="step-desc">Click the <i class="fas fa-clock" style="color:var(--warning);"></i> clock icon to toggle a user between <span class="pill pill-green">Active</span> and <span class="pill pill-red">Suspended</span>. Suspended users cannot log in.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"><i class="fas fa-key" style="font-size:0.7rem;"></i></div>
+          <div class="step-body">
+            <div class="step-title">Reset Password</div>
+            <div class="step-desc">Click the <i class="fas fa-key" style="color:var(--accent);"></i> key icon next to a user to set a new password for them. Useful when a user is locked out.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"><i class="fas fa-comment" style="font-size:0.7rem;"></i></div>
+          <div class="step-body">
+            <div class="step-title">Message Any User</div>
+            <div class="step-desc">Click the <i class="fas fa-comment" style="color:var(--accent);"></i> chat icon next to a user to open a direct chat with them. Admins can send messages to everyone regardless of visibility settings.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"><i class="fas fa-trash" style="font-size:0.7rem;"></i></div>
+          <div class="step-body">
+            <div class="step-title">Delete a User</div>
+            <div class="step-desc">Click the <i class="fas fa-trash" style="color:var(--danger);"></i> delete icon to permanently remove a user and all their data. This action cannot be undone — use with caution.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"><i class="fas fa-envelope-open-text" style="font-size:0.7rem;"></i></div>
+          <div class="step-body">
+            <div class="step-title">View &amp; Decrypt All Messages</div>
+            <div class="step-desc">The <strong>Recent Messages</strong> table on the dashboard shows all messages decrypted in real time. Click <strong>View all →</strong> for the full messages log. The <i class="fas fa-lock" style="color:var(--success);"></i> icon confirms each message was stored encrypted.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"><i class="fas fa-users" style="font-size:0.7rem;"></i></div>
+          <div class="step-body">
+            <div class="step-title">Manage Group Chats</div>
+            <div class="step-desc">Click <strong>Group Chats</strong> in the Quick Actions panel to view all groups, their members, and message counts. Admins can delete any group or its messages.</div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="help-divider">
+
+      <div style="font-weight:700;font-size:0.85rem;margin-bottom:10px;">👑 Role Hierarchy</div>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:0.82rem;">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(246,109,109,0.08);border:1px solid rgba(246,109,109,0.2);border-radius:var(--radius-sm);">
+          <span class="pill pill-red">👑 Super Admin</span>
+          <span style="color:var(--text-muted);">Full access. Can manage all users including other admins. Cannot be seen or contacted by normal users. There is only one Super Admin.</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:var(--radius-sm);">
+          <span class="pill pill-orange">Admin</span>
+          <span style="color:var(--text-muted);">Can send messages to all users. Hidden from normal users in search and People list. Managed by the Super Admin.</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(124,106,247,0.08);border:1px solid rgba(124,106,247,0.2);border-radius:var(--radius-sm);">
+          <span class="pill pill-accent">User</span>
+          <span style="color:var(--text-muted);">Standard account. Can chat with other regular users. Cannot see admins in the People list or search. Can reply to admins who message them first.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════
+       9. FAQ
+  ═══════════════════════════════════════════════════════ -->
+  <div class="help-section" id="faq">
+    <div class="section-header" onclick="toggleSection(this)">
+      <div class="section-icon si-blue"><i class="fas fa-circle-question"></i></div>
+      <div>
+        <div class="section-title">Frequently Asked Questions</div>
+        <div class="section-sub">Quick answers to common questions</div>
+      </div>
+      <i class="fas fa-chevron-down section-chevron"></i>
+    </div>
+    <div class="section-body">
+      <div class="faq">
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)"><i class="fas fa-chevron-right"></i> Why did I get logged out automatically?</div>
+          <div class="faq-a">ChatApp has a 30-minute idle timeout for security. If you don't perform any action for 30 minutes your session expires and you are redirected to the login page. Just log in again — your messages are all still there.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)"><i class="fas fa-chevron-right"></i> I didn't receive my OTP email. What do I do?</div>
+          <div class="faq-a">First, check your spam/junk folder. If it's not there, click <strong>Resend OTP</strong> on the verification page. Make sure you typed your email address correctly during registration. OTP codes expire quickly, so use the code as soon as you receive it.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)"><i class="fas fa-chevron-right"></i> Can I search for admin users?</div>
+          <div class="faq-a">No. Admin and Super Admin accounts are hidden from the People panel and the Search page for regular users. This is by design to protect admin accounts. If an admin wants to contact you, they will message you first and then you can reply.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)"><i class="fas fa-chevron-right"></i> Are my messages really encrypted?</div>
+          <div class="faq-a">Yes. Every message is encrypted with AES-256-CBC before being saved to the database. The small 🔒 green lock icon on each message confirms this. Messages are decrypted only when displayed to you in the chat room.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)"><i class="fas fa-chevron-right"></i> Can I delete a message I sent?</div>
+          <div class="faq-a">Yes. Hover over any message you sent and a delete icon will appear. Click it to remove that specific message. You can also use the 🗑 button at the top of the chat room to delete the entire conversation.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)"><i class="fas fa-chevron-right"></i> How do I change the theme / dark mode?</div>
+          <div class="faq-a">Click the 🎨 palette icon in the top navigation bar. You can choose between <strong>Auto</strong> (follows your system setting), <strong>Light</strong>, or <strong>Dark</strong> mode. Your choice is saved automatically.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)"><i class="fas fa-chevron-right"></i> I'm an admin — why can't I access the Admin Panel?</div>
+          <div class="faq-a">Only the Super Admin can grant admin access. If you believe you should have admin access, contact the Super Admin of your ChatApp instance and ask them to set your role to Admin from the Manage Users section.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)"><i class="fas fa-chevron-right"></i> Can I send files in group chats?</div>
+          <div class="faq-a">Yes. Files and voice notes work in both direct messages and group chats. Click the paperclip icon in the message input bar of any group room to attach a file.</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Footer ── -->
+  <div style="text-align:center;color:var(--text-muted);font-size:0.78rem;margin-top:32px;padding:20px;">
+    <i class="fas fa-lock" style="color:var(--success);"></i> &nbsp;ChatApp — AES-256 Encrypted &nbsp;·&nbsp;
+    <a href="{% url 'chat:home' %}" style="color:var(--accent);text-decoration:none;">Back to Messages</a>
+    {% if user.is_superuser or user.is_staff %}
+    &nbsp;·&nbsp;
+    <a href="{% url 'chat:admin_dashboard' %}" style="color:var(--accent);text-decoration:none;">Admin Panel</a>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleSection(header) {
+  header.classList.toggle('open');
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+}
+
+function toggleFaq(q) {
+  q.parentElement.classList.toggle('open');
+  const icon = q.querySelector('i');
+  if (q.parentElement.classList.contains('open')) {
+    icon.style.transform = 'rotate(90deg)';
+  } else {
+    icon.style.transform = '';
+  }
+}
+
+// Smooth-scroll for TOC links
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) {
+      e.preventDefault();
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Auto-open the section
+      const header = target.querySelector('.section-header');
+      const body   = target.querySelector('.section-body');
+      if (header && body && !body.classList.contains('open')) {
+        header.classList.add('open');
+        body.classList.add('open');
+      }
+    }
+  });
+});
+</script>
+{% endblock %}

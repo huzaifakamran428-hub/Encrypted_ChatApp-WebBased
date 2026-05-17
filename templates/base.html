@@ -268,6 +268,7 @@
     <div class="navbar-right">
         {% if user.is_authenticated %}
             <a href="{% url 'chat:search' %}" class="nav-link"><i class="fas fa-search"></i></a>
+            <a href="{% url 'chat:help' %}" class="nav-link" title="Help &amp; Guide"><i class="fas fa-circle-question"></i></a>
             {% if user.is_superuser %}
             <a href="{% url 'chat:admin_dashboard' %}" class="nav-link" title="Admin Dashboard" style="color:var(--warning);"><i class="fas fa-shield-halved"></i></a>
             {% endif %}
