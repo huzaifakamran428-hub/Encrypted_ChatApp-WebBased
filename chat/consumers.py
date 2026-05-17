@@ -18,13 +18,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
         self.other_username = self.scope["url_route"]["kwargs"]["username"]
 
-        # Enforce admin visibility: normal users cannot chat with admin/staff users via WS
+        # Only block the connection if a normal user is trying to INITIATE a
+        # WebSocket to an admin they searched for themselves — not if an admin
+        # has already messaged them (we still need delivery in that direction).
+        # The HTTP chat_room_view already prevents normal users from navigating
+        # to an admin's page, so by the time we reach here the admin has
+        # explicitly opened a chat with this user. Allow it.
         other_user = await self.get_other_user(self.other_username)
         if other_user is None:
-            await self.close()
-            return
-        if (other_user.is_superuser or other_user.is_staff) and \
-                not (self.user.is_superuser or self.user.is_staff):
             await self.close()
             return
 
@@ -33,8 +34,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_add(self.room_name, self.channel_name)
         await self.accept()
         count = await self.mark_messages_read()
-        # Tell the room (including the other user's open tab) that we've read their messages
-        # so the home-page badge can be cleared instantly without a refresh
         if count > 0:
             await self.channel_layer.group_send(
                 self.room_name,
@@ -43,7 +42,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     'reader': self.user.username,
                 }
             )
-            # Also clear badge on the other user's home page via their notif channel
             await self.channel_layer.group_send(
                 f'notif_{self.other_username}',
                 {

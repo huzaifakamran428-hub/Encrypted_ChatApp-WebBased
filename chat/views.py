@@ -55,11 +55,15 @@ def home_view(request):
             other = User.objects.get(pk=uid)
         except User.DoesNotExist:
             continue
-        # FIX: Hide admin/staff conversations from regular users
-        if _is_admin_user(other) and not _is_admin_user(request.user):
-            continue
         if other.username == 'None':
             continue
+        # For non-admin users: hide admin conversations ONLY if the admin has
+        # never sent them a message (i.e. they somehow have a stale sent entry).
+        # If an admin has messaged this user, show the conversation so they can read/reply.
+        if not _is_admin_user(request.user) and _is_admin_user(other):
+            has_received = Message.objects.filter(sender=other, receiver=request.user).exists()
+            if not has_received:
+                continue  # admin never messaged this user — skip
         last  = Message.objects.filter(
             Q(sender=request.user, receiver=other) |
             Q(sender=other, receiver=request.user)
@@ -70,7 +74,7 @@ def home_view(request):
     conversations.sort(
         key=lambda x: x['last_message'].timestamp if x['last_message'] else 0, reverse=True)
 
-    # People sidebar: hide admin/staff users from regular users
+    # People sidebar: hide admin/staff users from regular users (discovery)
     if _is_admin_user(request.user):
         all_users = User.objects.exclude(pk=request.user.pk).exclude(pk__in=chatted_ids).exclude(username='None')
     else:
@@ -93,11 +97,14 @@ def chat_room_view(request, username):
     other_user = get_object_or_404(User, username=username)
     if other_user == request.user:
         return redirect('chat:home')
-    # Non-admin users cannot open a chat with an admin/superuser
+    # Normal users cannot open a chat page with an admin UNLESS the admin has
+    # already sent them at least one message (i.e. admin initiated the conversation).
     if _is_admin_user(other_user) and not _is_admin_user(request.user):
-        from django.contrib import messages as dj_msg
-        dj_msg.error(request, 'This user is not available for direct messaging.')
-        return redirect('chat:home')
+        has_received = Message.objects.filter(sender=other_user, receiver=request.user).exists()
+        if not has_received:
+            from django.contrib import messages as dj_msg
+            dj_msg.error(request, 'This user is not available for direct messaging.')
+            return redirect('chat:home')
     messages_qs = Message.objects.filter(
         Q(sender=request.user, receiver=other_user) |
         Q(sender=other_user, receiver=request.user)
@@ -709,9 +716,11 @@ def poll_conversations_view(request):
             other = User.objects.get(pk=uid)
         except User.DoesNotExist:
             continue
-        # FIX: Hide admin/staff conversations from regular users
-        if _is_admin_user(other) and not _is_admin_user(request.user):
-            continue
+        # Mirror the home_view logic: show admin conversations only if admin sent first
+        if not _is_admin_user(request.user) and _is_admin_user(other):
+            has_received = Message.objects.filter(sender=other, receiver=request.user).exists()
+            if not has_received:
+                continue
         last = Message.objects.filter(
             Q(sender=request.user, receiver=other) |
             Q(sender=other, receiver=request.user)
