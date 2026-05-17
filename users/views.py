@@ -281,6 +281,12 @@ def _clear_otp_session(request):
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('chat:home')
+    # Show a message when the user was automatically logged out due to inactivity
+    if request.method == 'GET' and request.GET.get('reason') == 'timeout':
+        messages.warning(
+            request,
+            'Your session expired after 30 minutes of inactivity. Please log in again.'
+        )
     if request.method == 'POST':
         form = LoginForm(request, data=request.POST)
         if form.is_valid():

@@ -17,6 +17,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.close()
             return
         self.other_username = self.scope["url_route"]["kwargs"]["username"]
+
+        # Enforce admin visibility: normal users cannot chat with admin/staff users via WS
+        other_user = await self.get_other_user(self.other_username)
+        if other_user is None:
+            await self.close()
+            return
+        if (other_user.is_superuser or other_user.is_staff) and \
+                not (self.user.is_superuser or self.user.is_staff):
+            await self.close()
+            return
+
         usernames = sorted([self.user.username, self.other_username])
         self.room_name = f'chat_{"_".join(usernames)}'
         await self.channel_layer.group_add(self.room_name, self.channel_name)
@@ -153,6 +164,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }
             )
         )
+
+    @database_sync_to_async
+    def get_other_user(self, username):
+        """Return the User object for the other chat participant, or None."""
+        try:
+            return User.objects.get(username=username)
+        except User.DoesNotExist:
+            return None
 
     @database_sync_to_async
     def save_message(self, content):
