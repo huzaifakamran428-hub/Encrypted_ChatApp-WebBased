@@ -5,4 +5,5 @@ websocket_urlpatterns = [
     re_path(r'ws/chat/(?P<username>\w+)/$', consumers.ChatConsumer.as_asgi()),
     re_path(r'ws/group/(?P<group_id>\d+)/$', consumers.GroupChatConsumer.as_asgi()),
     re_path(r'ws/notifications/$', consumers.NotificationConsumer.as_asgi()),
+    re_path(r'ws/call/(?P<username>\w+)/$', consumers.CallConsumer.as_asgi()),
 ]

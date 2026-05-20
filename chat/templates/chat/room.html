@@ -155,10 +155,124 @@ html, body { height: 100%; overflow: hidden; }
       </div>
     </div>
     <div class="ws-indicator" id="ws-dot"></div>
+
+    <!-- Call Buttons -->
+    <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0;">
+      <button id="btn-audio-call" onclick="startCall('audio')" title="Voice call"
+        style="width:36px;height:36px;border-radius:50%;background:rgba(62,207,142,0.12);border:1px solid rgba(62,207,142,0.3);color:var(--success);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.9rem;transition:all 0.2s;"
+        onmouseenter="this.style.background='rgba(62,207,142,0.25)'" onmouseleave="this.style.background='rgba(62,207,142,0.12)'">
+        <i class="fas fa-phone"></i>
+      </button>
+      <button id="btn-video-call" onclick="startCall('video')" title="Video call"
+        style="width:36px;height:36px;border-radius:50%;background:rgba(124,106,247,0.12);border:1px solid rgba(124,106,247,0.3);color:var(--accent);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.9rem;transition:all 0.2s;"
+        onmouseenter="this.style.background='rgba(124,106,247,0.25)'" onmouseleave="this.style.background='rgba(124,106,247,0.12)'">
+        <i class="fas fa-video"></i>
+      </button>
+    </div>
+
     {% if request.user.is_superuser %}
     <button onclick="deleteAllMsgs()" title="Clear conversation (Admin)" style="background:none;border:1px solid var(--border);color:var(--danger);cursor:pointer;border-radius:var(--radius-sm);padding:6px 10px;font-size:0.75rem;display:flex;align-items:center;gap:5px;transition:all 0.2s;" onmouseenter="this.style.background='rgba(246,109,109,0.1)'" onmouseleave="this.style.background='none'"><i class="fas fa-trash"></i> Clear</button>
     {% endif %}
   </div>
+
+  <!-- ══ INCOMING CALL BANNER ══ -->
+  <div id="incoming-call-bar" style="display:none;align-items:center;gap:14px;padding:10px 18px;
+    background:linear-gradient(135deg,rgba(62,207,142,0.15),rgba(62,207,142,0.05));
+    border-bottom:1px solid rgba(62,207,142,0.3);flex-shrink:0;z-index:100;">
+    <div style="width:40px;height:40px;border-radius:50%;background:rgba(62,207,142,0.2);
+      display:flex;align-items:center;justify-content:center;font-size:1.2rem;
+      animation:ring-pulse 1s infinite;">
+      <i class="fas fa-phone" id="incoming-icon" style="color:var(--success);"></i>
+    </div>
+    <div style="flex:1;">
+      <div style="font-weight:700;font-size:0.88rem;" id="incoming-call-label">Incoming call…</div>
+      <div style="font-size:0.74rem;color:var(--text-muted);" id="incoming-call-type">Voice call</div>
+    </div>
+    <button onclick="answerCall()" style="background:var(--success);color:#fff;border:none;
+      border-radius:20px;padding:7px 18px;font-size:0.8rem;font-weight:700;cursor:pointer;
+      display:flex;align-items:center;gap:6px;transition:opacity 0.2s;"
+      onmouseenter="this.style.opacity='.85'" onmouseleave="this.style.opacity='1'">
+      <i class="fas fa-phone"></i> Answer
+    </button>
+    <button onclick="rejectCall()" style="background:var(--danger);color:#fff;border:none;
+      border-radius:20px;padding:7px 18px;font-size:0.8rem;font-weight:700;cursor:pointer;
+      display:flex;align-items:center;gap:6px;transition:opacity 0.2s;"
+      onmouseenter="this.style.opacity='.85'" onmouseleave="this.style.opacity='1'">
+      <i class="fas fa-phone-slash"></i> Decline
+    </button>
+  </div>
+
+  <!-- ══ ACTIVE CALL OVERLAY ══ -->
+  <div id="call-overlay" style="display:none;position:fixed;inset:0;z-index:9999;
+    background:rgba(10,10,18,0.96);flex-direction:column;align-items:center;justify-content:center;">
+
+    <!-- Video streams (hidden for audio-only calls) -->
+    <div id="video-area" style="display:none;width:100%;max-width:900px;height:60vh;
+      position:relative;border-radius:12px;overflow:hidden;background:#000;margin-bottom:16px;">
+      <video id="remote-video" autoplay playsinline style="width:100%;height:100%;object-fit:cover;"></video>
+      <video id="local-video"  autoplay playsinline muted
+        style="position:absolute;bottom:12px;right:12px;width:140px;height:100px;
+        object-fit:cover;border-radius:8px;border:2px solid rgba(255,255,255,0.2);background:#111;"></video>
+    </div>
+
+    <!-- Audio call avatar (shown for voice calls) -->
+    <div id="audio-area" style="display:flex;flex-direction:column;align-items:center;gap:16px;margin-bottom:24px;">
+      <div id="call-avatar-circle"
+        style="width:96px;height:96px;border-radius:50%;background:var(--accent-light);
+        border:3px solid var(--accent);display:flex;align-items:center;justify-content:center;
+        font-size:2.4rem;font-weight:800;color:var(--accent);position:relative;">
+        <span id="call-avatar-letter">?</span>
+        <!-- animated ring -->
+        <div style="position:absolute;inset:-8px;border-radius:50%;
+          border:2px solid rgba(124,106,247,0.4);animation:ring-pulse 1.5s infinite;"></div>
+        <div style="position:absolute;inset:-16px;border-radius:50%;
+          border:2px solid rgba(124,106,247,0.2);animation:ring-pulse 1.5s 0.4s infinite;"></div>
+      </div>
+      <div style="font-size:1.3rem;font-weight:800;color:#fff;" id="call-name">…</div>
+      <div style="font-size:0.85rem;color:rgba(255,255,255,0.5);" id="call-status-label">Calling…</div>
+      <div style="font-size:0.82rem;color:rgba(255,255,255,0.4);font-family:monospace;" id="call-timer" style="display:none;">00:00</div>
+    </div>
+
+    <!-- Hidden audio element for remote stream in voice calls -->
+    <audio id="remote-audio" autoplay></audio>
+
+    <!-- Controls -->
+    <div style="display:flex;gap:16px;align-items:center;">
+      <button id="btn-mute" onclick="toggleMute()"
+        style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,0.1);
+        border:none;color:#fff;font-size:1.1rem;cursor:pointer;transition:background 0.2s;"
+        title="Mute">
+        <i class="fas fa-microphone" id="mute-icon"></i>
+      </button>
+      <button id="btn-cam" onclick="toggleCamera()" style="display:none;
+        width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,0.1);
+        border:none;color:#fff;font-size:1.1rem;cursor:pointer;transition:background 0.2s;"
+        title="Camera">
+        <i class="fas fa-video" id="cam-icon"></i>
+      </button>
+      <button onclick="hangUp()"
+        style="width:64px;height:64px;border-radius:50%;background:var(--danger);
+        border:none;color:#fff;font-size:1.3rem;cursor:pointer;
+        box-shadow:0 4px 20px rgba(246,109,109,0.4);transition:transform 0.15s;"
+        onmouseenter="this.style.transform='scale(1.08)'" onmouseleave="this.style.transform='scale(1)'"
+        title="End call">
+        <i class="fas fa-phone-slash"></i>
+      </button>
+      <button id="btn-speaker" onclick="toggleSpeaker()"
+        style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,0.1);
+        border:none;color:#fff;font-size:1.1rem;cursor:pointer;transition:background 0.2s;"
+        title="Speaker">
+        <i class="fas fa-volume-up" id="speaker-icon"></i>
+      </button>
+    </div>
+  </div>
+
+  <style>
+    @keyframes ring-pulse {
+      0%   { transform: scale(1);   opacity: 1; }
+      100% { transform: scale(1.3); opacity: 0; }
+    }
+  </style>
 
   <!-- WS Warning -->
   <div class="ws-warning" id="ws-warning">
@@ -674,5 +788,378 @@ updateLayout();
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 syncButtons(); scrollBottom(); connect();
+
+// ════════════════════════════════════════════════════════════════════
+//  WebRTC CALLING SYSTEM
+//  Uses a separate WebSocket (/ws/call/<username>/) purely for signaling.
+//  The actual audio/video streams go peer-to-peer via WebRTC.
+// ════════════════════════════════════════════════════════════════════
+const CALL_WS_URL = `${WS_PROTO}://${window.location.host}/ws/call/${OTHER}/`;
+
+// ── State ──────────────────────────────────────────────────────────
+let callSocket      = null;   // WebSocket for signaling
+let peerConn        = null;   // RTCPeerConnection
+let localStream     = null;   // our mic/camera
+let currentCallType = 'audio'; // 'audio' | 'video'
+let callDirection   = null;   // 'outgoing' | 'incoming'
+let incomingOffer   = null;   // saved SDP offer from remote
+let callTimerInterval = null;
+let callSeconds     = 0;
+let isMuted         = false;
+let isCameraOff     = false;
+let pendingIceCandidates = []; // buffer ICE before remoteDescription set
+
+// Free STUN servers (Google + Cloudflare) — work without any account
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' },
+  ]
+};
+
+// ── Connect signaling WebSocket lazily (on first call attempt) ─────
+function ensureCallSocket() {
+  if (callSocket && callSocket.readyState === WebSocket.OPEN) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    callSocket = new WebSocket(CALL_WS_URL);
+    callSocket.onopen  = () => resolve();
+    callSocket.onerror = (e) => reject(e);
+    callSocket.onmessage = (e) => handleCallSignal(JSON.parse(e.data));
+    callSocket.onclose = () => {
+      // If call is active when socket closes unexpectedly, end it
+      if (peerConn) hangUp();
+    };
+  });
+}
+
+// ── Handle incoming signals from the other side ────────────────────
+async function handleCallSignal(msg) {
+  const { signal, from, data, call_type } = msg;
+
+  if (signal === 'call-offer') {
+    // Someone is calling us
+    incomingOffer   = data;
+    currentCallType = call_type || 'audio';
+    callDirection   = 'incoming';
+    showIncomingCallBanner(from, call_type);
+    playRingtone(true);
+
+  } else if (signal === 'call-answer') {
+    // Our outgoing call was answered
+    if (!peerConn) return;
+    await peerConn.setRemoteDescription(new RTCSessionDescription(data));
+    // Flush buffered ICE candidates
+    for (const c of pendingIceCandidates) {
+      await peerConn.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{});
+    }
+    pendingIceCandidates = [];
+    setCallStatus('Connected');
+    startCallTimer();
+
+  } else if (signal === 'ice-candidate') {
+    if (!peerConn) return;
+    if (peerConn.remoteDescription) {
+      await peerConn.addIceCandidate(new RTCIceCandidate(data)).catch(()=>{});
+    } else {
+      pendingIceCandidates.push(data); // buffer until remote desc is set
+    }
+
+  } else if (signal === 'call-reject') {
+    playRingtone(false);
+    setCallStatus('Call declined');
+    setTimeout(closeCallUI, 2000);
+
+  } else if (signal === 'call-end') {
+    playRingtone(false);
+    setCallStatus('Call ended');
+    setTimeout(closeCallUI, 1500);
+  }
+}
+
+// ── Start an outgoing call ─────────────────────────────────────────
+async function startCall(type) {
+  currentCallType = type;
+  callDirection   = 'outgoing';
+
+  try {
+    await ensureCallSocket();
+  } catch {
+    showCallError('Cannot connect to signaling server. Make sure the server supports WebSockets.');
+    return;
+  }
+
+  // Request mic (+ camera for video)
+  try {
+    const constraints = type === 'video'
+      ? { audio: true, video: { width: 1280, height: 720, facingMode: 'user' } }
+      : { audio: true, video: false };
+    localStream = await navigator.mediaDevices.getUserMedia(constraints);
+  } catch (err) {
+    showCallError(`Microphone${type==='video'?' / camera':''} access denied. Please allow permissions and try again.`);
+    return;
+  }
+
+  showCallOverlay(type, OTHER, 'Ringing…');
+  setupPeerConnection();
+  localStream.getTracks().forEach(t => peerConn.addTrack(t, localStream));
+
+  // Attach local video preview
+  if (type === 'video') {
+    document.getElementById('local-video').srcObject = localStream;
+  }
+
+  // Create and send SDP offer
+  const offer = await peerConn.createOffer();
+  await peerConn.setLocalDescription(offer);
+  callSocket.send(JSON.stringify({ signal: 'call-offer', data: offer, call_type: type }));
+}
+
+// ── Answer an incoming call ────────────────────────────────────────
+async function answerCall() {
+  hideIncomingCallBanner();
+  playRingtone(false);
+
+  try {
+    const constraints = currentCallType === 'video'
+      ? { audio: true, video: { width: 1280, height: 720, facingMode: 'user' } }
+      : { audio: true, video: false };
+    localStream = await navigator.mediaDevices.getUserMedia(constraints);
+  } catch (err) {
+    showCallError(`Microphone${currentCallType==='video'?' / camera':''} access denied.`);
+    return;
+  }
+
+  showCallOverlay(currentCallType, OTHER, 'Connecting…');
+  setupPeerConnection();
+  localStream.getTracks().forEach(t => peerConn.addTrack(t, localStream));
+
+  if (currentCallType === 'video') {
+    document.getElementById('local-video').srcObject = localStream;
+  }
+
+  // Apply buffered offer and create answer
+  await peerConn.setRemoteDescription(new RTCSessionDescription(incomingOffer));
+  for (const c of pendingIceCandidates) {
+    await peerConn.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{});
+  }
+  pendingIceCandidates = [];
+
+  const answer = await peerConn.createAnswer();
+  await peerConn.setLocalDescription(answer);
+  callSocket.send(JSON.stringify({ signal: 'call-answer', data: answer }));
+
+  setCallStatus('Connected');
+  startCallTimer();
+}
+
+// ── Reject incoming call ───────────────────────────────────────────
+function rejectCall() {
+  hideIncomingCallBanner();
+  playRingtone(false);
+  if (callSocket && callSocket.readyState === WebSocket.OPEN) {
+    callSocket.send(JSON.stringify({ signal: 'call-reject', data: null }));
+  }
+}
+
+// ── Hang up ────────────────────────────────────────────────────────
+function hangUp() {
+  if (callSocket && callSocket.readyState === WebSocket.OPEN) {
+    callSocket.send(JSON.stringify({ signal: 'call-end', data: null }));
+  }
+  closeCallUI();
+}
+
+// ── Set up RTCPeerConnection with event handlers ───────────────────
+function setupPeerConnection() {
+  peerConn = new RTCPeerConnection(ICE_SERVERS);
+
+  // Send our ICE candidates to the other side as they are gathered
+  peerConn.onicecandidate = (e) => {
+    if (e.candidate && callSocket && callSocket.readyState === WebSocket.OPEN) {
+      callSocket.send(JSON.stringify({ signal: 'ice-candidate', data: e.candidate }));
+    }
+  };
+
+  // When we receive the remote stream, attach it to the audio/video element
+  peerConn.ontrack = (e) => {
+    const remoteStream = e.streams[0];
+    if (currentCallType === 'video') {
+      document.getElementById('remote-video').srcObject = remoteStream;
+    } else {
+      document.getElementById('remote-audio').srcObject = remoteStream;
+    }
+  };
+
+  peerConn.onconnectionstatechange = () => {
+    const state = peerConn.connectionState;
+    if (state === 'connected')     setCallStatus('Connected');
+    if (state === 'disconnected')  { setCallStatus('Reconnecting…'); }
+    if (state === 'failed')        { setCallStatus('Connection failed'); setTimeout(closeCallUI, 2000); }
+    if (state === 'closed')        closeCallUI();
+  };
+}
+
+// ── Clean up everything ────────────────────────────────────────────
+function closeCallUI() {
+  stopCallTimer();
+  playRingtone(false);
+  hideIncomingCallBanner();
+
+  if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+  if (peerConn)    { peerConn.close(); peerConn = null; }
+
+  // Reset video elements
+  ['local-video','remote-video'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.srcObject = null; }
+  });
+  document.getElementById('remote-audio').srcObject = null;
+
+  // Hide overlay
+  const overlay = document.getElementById('call-overlay');
+  overlay.style.display = 'none';
+
+  pendingIceCandidates = [];
+  isMuted = false;
+  isCameraOff = false;
+  document.getElementById('mute-icon').className  = 'fas fa-microphone';
+  document.getElementById('cam-icon').className   = 'fas fa-video';
+  document.getElementById('btn-mute').style.background = 'rgba(255,255,255,0.1)';
+  document.getElementById('btn-cam').style.background  = 'rgba(255,255,255,0.1)';
+}
+
+// ── Call overlay UI helpers ────────────────────────────────────────
+function showCallOverlay(type, name, statusText) {
+  const overlay   = document.getElementById('call-overlay');
+  const audioArea = document.getElementById('audio-area');
+  const videoArea = document.getElementById('video-area');
+  const btnCam    = document.getElementById('btn-cam');
+
+  document.getElementById('call-avatar-letter').textContent = name[0].toUpperCase();
+  document.getElementById('call-name').textContent          = name;
+  setCallStatus(statusText);
+
+  if (type === 'video') {
+    videoArea.style.display = 'block';
+    audioArea.style.display = 'none';
+    btnCam.style.display    = 'flex';
+  } else {
+    videoArea.style.display = 'none';
+    audioArea.style.display = 'flex';
+    btnCam.style.display    = 'none';
+  }
+  overlay.style.display = 'flex';
+}
+
+function setCallStatus(text) {
+  document.getElementById('call-status-label').textContent = text;
+}
+
+function showIncomingCallBanner(from, type) {
+  const bar   = document.getElementById('incoming-call-bar');
+  const label = document.getElementById('incoming-call-label');
+  const sub   = document.getElementById('incoming-call-type');
+  const icon  = document.getElementById('incoming-icon');
+  label.textContent = `${from} is calling…`;
+  sub.textContent   = type === 'video' ? 'Video call' : 'Voice call';
+  icon.className    = type === 'video' ? 'fas fa-video' : 'fas fa-phone';
+  bar.style.display = 'flex';
+}
+
+function hideIncomingCallBanner() {
+  document.getElementById('incoming-call-bar').style.display = 'none';
+}
+
+function showCallError(msg) {
+  // Show as a brief toast-like message in the call area or a simple alert
+  alert('📞 ' + msg);
+}
+
+// ── In-call controls ───────────────────────────────────────────────
+function toggleMute() {
+  if (!localStream) return;
+  isMuted = !isMuted;
+  localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+  document.getElementById('mute-icon').className = isMuted ? 'fas fa-microphone-slash' : 'fas fa-microphone';
+  document.getElementById('btn-mute').style.background = isMuted ? 'rgba(246,109,109,0.4)' : 'rgba(255,255,255,0.1)';
+}
+
+function toggleCamera() {
+  if (!localStream) return;
+  isCameraOff = !isCameraOff;
+  localStream.getVideoTracks().forEach(t => t.enabled = !isCameraOff);
+  document.getElementById('cam-icon').className = isCameraOff ? 'fas fa-video-slash' : 'fas fa-video';
+  document.getElementById('btn-cam').style.background = isCameraOff ? 'rgba(246,109,109,0.4)' : 'rgba(255,255,255,0.1)';
+}
+
+function toggleSpeaker() {
+  // On desktop browsers the speaker toggle isn't directly controllable;
+  // we can switch between muted / unmuted on the remote audio element
+  const audio = document.getElementById('remote-audio');
+  const video = document.getElementById('remote-video');
+  const muted = !audio.muted;
+  audio.muted = muted;
+  video.muted = muted;
+  const icon = document.getElementById('speaker-icon');
+  icon.className = muted ? 'fas fa-volume-mute' : 'fas fa-volume-up';
+  document.getElementById('btn-speaker').style.background = muted ? 'rgba(246,109,109,0.4)' : 'rgba(255,255,255,0.1)';
+}
+
+// ── Call timer ─────────────────────────────────────────────────────
+function startCallTimer() {
+  callSeconds = 0;
+  const timerEl = document.getElementById('call-timer');
+  timerEl.style.display = 'block';
+  clearInterval(callTimerInterval);
+  callTimerInterval = setInterval(() => {
+    callSeconds++;
+    const m = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+    const s = String(callSeconds % 60).padStart(2, '0');
+    timerEl.textContent = `${m}:${s}`;
+  }, 1000);
+}
+
+function stopCallTimer() {
+  clearInterval(callTimerInterval);
+  callTimerInterval = null;
+  document.getElementById('call-timer').style.display = 'none';
+  document.getElementById('call-timer').textContent = '00:00';
+  callSeconds = 0;
+}
+
+// ── Ringtone (uses the Web Audio API — no file needed) ─────────────
+let ringtoneInterval = null;
+let audioCtx = null;
+
+function playRingtone(start) {
+  if (!start) {
+    if (ringtoneInterval) { clearInterval(ringtoneInterval); ringtoneInterval = null; }
+    return;
+  }
+  if (ringtoneInterval) return;
+
+  function beep() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = audioCtx;
+      // Two-tone ring like a phone
+      [[440, 0, 0.2], [480, 0.25, 0.45]].forEach(([freq, start, end]) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.value = freq;
+        g.gain.setValueAtTime(0, ctx.currentTime + start);
+        g.gain.linearRampToValueAtTime(0.15, ctx.currentTime + start + 0.05);
+        g.gain.linearRampToValueAtTime(0, ctx.currentTime + end);
+        o.start(ctx.currentTime + start);
+        o.stop(ctx.currentTime + end + 0.01);
+      });
+    } catch(e) {}
+  }
+  beep();
+  ringtoneInterval = setInterval(beep, 1500);
+}
+
 </script>
 {% endblock %}

@@ -428,3 +428,87 @@ class NotificationConsumer(AsyncWebsocketConsumer):
                 }
             )
         )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CallConsumer — WebRTC signaling over WebSockets
+# Handles: call-offer, call-answer, ice-candidate, call-end, call-reject
+# Room name: call_<sorted_usernames>  (same pattern as chat rooms)
+# ══════════════════════════════════════════════════════════════════════════════
+class CallConsumer(AsyncWebsocketConsumer):
+
+    async def connect(self):
+        self.user = self.scope["user"]
+        if not self.user.is_authenticated:
+            await self.close()
+            return
+
+        self.other_username = self.scope["url_route"]["kwargs"]["username"]
+
+        # Verify the other user exists
+        other_user = await self.get_user(self.other_username)
+        if other_user is None:
+            await self.close()
+            return
+
+        usernames = sorted([self.user.username, self.other_username])
+        self.room_name = f'call_{"_".join(usernames)}'
+
+        await self.channel_layer.group_add(self.room_name, self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        if hasattr(self, 'room_name'):
+            # Notify the other side the caller/callee disconnected unexpectedly
+            await self.channel_layer.group_send(
+                self.room_name,
+                {
+                    "type": "call_signal",
+                    "signal": "call-end",
+                    "from": self.user.username,
+                    "data": None,
+                }
+            )
+            await self.channel_layer.group_discard(self.room_name, self.channel_name)
+
+    async def receive(self, text_data):
+        """
+        Expected message shape:
+          { "signal": "call-offer"|"call-answer"|"ice-candidate"|"call-end"|"call-reject",
+            "data": <SDP or ICE candidate object or null>,
+            "call_type": "audio"|"video"  (only on call-offer) }
+        """
+        payload = json.loads(text_data)
+        signal   = payload.get("signal")
+        data     = payload.get("data")
+        call_type = payload.get("call_type", "audio")
+
+        await self.channel_layer.group_send(
+            self.room_name,
+            {
+                "type": "call_signal",
+                "signal": signal,
+                "from": self.user.username,
+                "data": data,
+                "call_type": call_type,
+            }
+        )
+
+    async def call_signal(self, event):
+        """Forward the signal only to the OTHER participant, not the sender."""
+        if event["from"] == self.user.username:
+            return  # Don't echo back to sender
+
+        await self.send(text_data=json.dumps({
+            "signal":    event["signal"],
+            "from":      event["from"],
+            "data":      event.get("data"),
+            "call_type": event.get("call_type", "audio"),
+        }))
+
+    @database_sync_to_async
+    def get_user(self, username):
+        try:
+            return User.objects.get(username=username)
+        except User.DoesNotExist:
+            return None
