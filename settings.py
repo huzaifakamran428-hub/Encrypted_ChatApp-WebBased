@@ -49,11 +49,11 @@ MIDDLEWARE = [
 
 # ── Session / Security Settings ─────────────────────────────────────────────
 # Session expires after 30 minutes of total time (hard maximum cookie age)
-SESSION_COOKIE_AGE = 1800           # 30 minutes in seconds
+SESSION_COOKIE_AGE = 1800  # 30 minutes in seconds
 # Keep session alive while user is active (reset age on every request)
 SESSION_SAVE_EVERY_REQUEST = True
 # How long (seconds) a user can be idle before being logged out (checked in middleware)
-SESSION_IDLE_TIMEOUT = 1800         # 30 minutes
+SESSION_IDLE_TIMEOUT = 1800  # 30 minutes
 
 ROOT_URLCONF = "chatapp.urls"
 
